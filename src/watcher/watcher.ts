@@ -10,7 +10,8 @@ import {
 import type StatBlockPlugin from "src/main";
 //have to ignore until i fix typing issue
 //@ts-expect-error
-import FSWorker, {
+import FSWorker from "./watcher.worker";
+import type {
     GetFileCacheMessage,
     FileCacheMessage,
     QueueMessage,
@@ -27,8 +28,8 @@ declare global {
 }
 
 class WatcherClass extends Component {
-    announce: boolean;
-    plugin: StatBlockPlugin;
+    announce: boolean = false;
+    plugin!: StatBlockPlugin;
     get metadataCache() {
         return this.plugin.app.metadataCache;
     }
@@ -132,7 +133,7 @@ class WatcherClass extends Component {
                             worker.postMessage<Partial<FileCacheMessage>>({
                                 type: "file"
                             });
-                            this.parsePath(abstract);
+                            if (abstract) this.parsePath(abstract);
                         }
                     }
                 }
@@ -200,14 +201,15 @@ class WatcherClass extends Component {
         Bestiary.setResolved(true);
     }
     async delete(path: string) {
-        Bestiary.removeEphemeralCreature(this.watchPaths.get(path));
+        const name = this.watchPaths.get(path);
+        if (name) Bestiary.removeEphemeralCreature(name);
         this.watchPaths.delete(path);
         if (this.plugin.settings.debug)
             console.debug(
                 `Fantasy Statblocks: Removing '${path}' from bestiary`
             );
     }
-    startTime: number;
+    startTime: number = 0;
     start(announce = false) {
         Bestiary.setResolved(false);
         this.announce = announce;
@@ -262,7 +264,7 @@ class WatcherClass extends Component {
     }
     async getFileInformation(file: TFile): Promise<FileCacheMessage | null> {
         if (this.watchPaths.has(file.path)) {
-            const monster = Bestiary.get(this.watchPaths.get(file.path));
+            const monster = Bestiary.get(this.watchPaths.get(file.path) ?? "");
 
             if (monster?.mtime == file.stat.mtime) return null;
         }

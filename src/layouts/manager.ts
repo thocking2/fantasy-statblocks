@@ -40,7 +40,7 @@ export default class LayoutManager {
     removeStyleSheet(id: string) {
         if (this.#STYLESHEETS.has(id)) {
             const existing = this.#STYLESHEETS.get(id);
-            existing.detach();
+            existing?.detach();
         }
     }
     getSheetRules(layout: Layout): string[] {
@@ -57,7 +57,7 @@ export default class LayoutManager {
             rules.push(
                 this.#buildSheetRule(
                     `.theme-light ${layoutName}`,
-                    layout.cssProperties[ThemeMode.Light]
+                    layout.cssProperties[ThemeMode.Light]!
                 )
             );
         }
@@ -65,7 +65,7 @@ export default class LayoutManager {
             rules.push(
                 this.#buildSheetRule(
                     `.theme-dark ${layoutName}`,
-                    layout.cssProperties[ThemeMode.Dark]
+                    layout.cssProperties[ThemeMode.Dark]!
                 )
             );
         }
@@ -80,8 +80,11 @@ export default class LayoutManager {
             attr: { id }
         });
         const rules = this.getSheetRules(layout);
-        for (const rule of rules) {
-            stylesheet.sheet.insertRule(rule, stylesheet.sheet.cssRules.length);
+        const sheet = stylesheet.sheet;
+        if (sheet) {
+            for (const rule of rules) {
+                sheet.insertRule(rule, sheet.cssRules.length);
+            }
         }
         return stylesheet;
     }
@@ -98,7 +101,7 @@ export default class LayoutManager {
         for (const [prop, value] of Object.entries(properties)) {
             if (prop == ThemeMode.Dark || prop == ThemeMode.Light) continue;
             let derived = CSSProperties.includes(value as CSSProperties)
-                ? `var(--statblock-${this.#transformProp(value)})`
+                ? `var(--statblock-${this.#transformProp(value as CSSProperties)})`
                 : value;
             built.push(`
             --statblock-${this.#transformProp(prop)}: ${derived};`);
@@ -106,7 +109,7 @@ export default class LayoutManager {
         return `${scope} {${built.join("")}
         }`;
     }
-    #default: string;
+    #default!: string;
     #defaults: Map<string, DefaultLayout> = new Map();
 
     /**
@@ -223,7 +226,8 @@ export default class LayoutManager {
     ): Map<string, ItemWithProperties> {
         const _layout =
             typeof layout === "string" ? this.getLayout(layout) : layout;
-        return this.#PROPERTY_MAP.get(_layout);
+        if (!_layout) return new Map();
+        return this.#PROPERTY_MAP.get(_layout) ?? new Map();
     }
     #unwrapLayout(layout: Layout) {
         const map: Map<string, ItemWithProperties> = new Map();

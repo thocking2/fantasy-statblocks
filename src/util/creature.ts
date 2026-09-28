@@ -10,7 +10,7 @@ export class MonsterSuggestionModal extends FuzzyInputSuggest<Monster> {
     }
     renderNote(noteEL: HTMLElement, result: FuzzyMatch<Monster>): void {
         const { item, match } = result;
-        renderMatches(noteEL, stringify(item.source), match.matches);
+        renderMatches(noteEL, stringify(item.source ?? ""), match.matches);
     }
     renderTitle(titleEl: HTMLElement, result: FuzzyMatch<Monster>): void {
         const { item, match } = result;

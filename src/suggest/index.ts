@@ -33,9 +33,9 @@ const STANDARD_FIELDS = [
 
 export class StatblockSuggester extends EditorSuggest<string> {
     private _context: SuggestContext = SuggestContext.None;
-    private _keys: string[];
-    private _layout: string;
-    private _props: Map<string, CommonProps>;
+    private _keys!: string[];
+    private _layout!: string;
+    private _props!: Map<string, CommonProps>;
     constructor(public plugin: StatBlockPlugin) {
         super(plugin.app);
     }
@@ -92,7 +92,7 @@ export class StatblockSuggester extends EditorSuggest<string> {
         let cursorAddition;
         if (this._context === SuggestContext.Property) {
             if (this._props.has(value)) {
-                const prop = this._props.get(value);
+                const prop = this._props.get(value)!;
                 switch (prop.type) {
                     /** Text only */
                     case "heading":
@@ -154,7 +154,7 @@ export class StatblockSuggester extends EditorSuggest<string> {
 
         this.context.editor.setCursor(
             this.context.start.line,
-            this.context.start.ch + cursorAddition
+            this.context.start.ch + cursorAddition!
         );
 
         this.close();
@@ -163,7 +163,7 @@ export class StatblockSuggester extends EditorSuggest<string> {
         cursor: EditorPosition,
         editor: Editor,
         file: TFile
-    ): EditorSuggestTriggerInfo {
+    ): EditorSuggestTriggerInfo | null {
         const range = editor.getRange({ line: 0, ch: 0 }, cursor);
 
         if (range.indexOf("```statblock\n") === -1) return null;
@@ -171,7 +171,7 @@ export class StatblockSuggester extends EditorSuggest<string> {
         const split = range.split("\n");
 
         let inStatblock = false,
-            start: number;
+            start: number = -1;
         for (let i = split.length - 1; i >= 0; i--) {
             let line = split[i];
             if (/^\`\`\`$/.test(line)) return null;
@@ -181,7 +181,7 @@ export class StatblockSuggester extends EditorSuggest<string> {
                 break;
             }
         }
-        if (!inStatblock) return;
+        if (!inStatblock) return null;
 
         const line = editor.getLine(cursor.line);
         //not inside the bracket

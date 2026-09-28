@@ -16,7 +16,7 @@ import { stringify } from "src/util/util";
 
 class LinkifierClass extends Component {
     #cache: Map<string, string> = new Map();
-    app: App;
+    app!: App;
     #addAliasesToCache(aliases: string[], file: TFile) {
         for (const alias of aliases) {
             this.#cache.set(alias, file.name);
@@ -51,7 +51,7 @@ class LinkifierClass extends Component {
             file: this.app.metadataCache.getFirstLinkpathDest(filePath, context)
         };
     }
-    metadataCache: MetadataCache;
+    metadataCache!: MetadataCache;
 
     initialize(metadataCache: MetadataCache, app: App) {
         this.load();
@@ -133,17 +133,17 @@ class LinkifierClass extends Component {
             .filter((s) => s && s.length)
             .map((str) => {
                 if (WIKILINK_REGEX.test(str)) {
-                    let link = str.match(WIKILINK_REGEX)[1];
+                    let link = str.match(WIKILINK_REGEX)![1];
                     return {
-                        isLink: render,
+                        isLink: !!render,
                         text: `[[${normalizePath(link)}]]`
                     };
                 }
                 if (MARKDOWN_REGEX.test(str)) {
-                    const [_, path, alias] = str.match(MARKDOWN_REGEX);
+                    const [_, path, alias] = str.match(MARKDOWN_REGEX)!;
 
                     return {
-                        isLink: render,
+                        isLink: !!render,
                         text: `[${alias ? alias : ""}](${path})`
                     };
                 }
