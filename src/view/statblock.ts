@@ -14,7 +14,7 @@ import type { Monster, StatblockParameters, Trait } from "../../index";
 import Statblock from "./Statblock.svelte";
 import type StatBlockPlugin from "src/main";
 
-import fastCopy from "fast-copy";
+import { copy as fastCopy } from "fast-copy";
 import type {
     CollapseItem,
     GroupItem,
@@ -28,7 +28,7 @@ import type {
 import { append } from "src/util/util";
 import { Linkifier } from "src/parser/linkify";
 import { Bestiary } from "src/bestiary/bestiary";
-import copy from "fast-copy";
+import { copy } from "fast-copy";
 
 type RendererParameters = {
     container: HTMLElement;

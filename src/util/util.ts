@@ -1,6 +1,6 @@
 import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import copy from "fast-copy";
+import { copy } from "fast-copy";
 import type { Trait } from "index";
 import { basicSetup } from "src/util/editor/extensions";
 import { materialPalenight } from "src/util/editor/theme-dark";

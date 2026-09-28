@@ -1,4 +1,4 @@
-import fastCopy from "fast-copy";
+import { copy as fastCopy } from "fast-copy";
 import type { Monster } from "index";
 import type StatBlockPlugin from "src/main";
 import { Watcher } from "src/watcher/watcher";
