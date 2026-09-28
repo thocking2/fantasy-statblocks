@@ -1,0 +1,63 @@
+name: Release
+
+# Builds a tag into a GitHub release + npm package. Runs either when a
+# matching tag is pushed directly, or when the tag workflow calls this
+# workflow right after creating a tag (the usual path, see tag.yml).
+on:
+    push:
+        tags:
+            - "[0-9]+.[0-9]+.[0-9]+"
+    workflow_call:
+        inputs:
+            tag:
+                required: true
+                type: string
+
+env:
+    PLUGIN_NAME: fantasy-statblocks
+
+permissions:
+    contents: write
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ inputs.tag || github.ref_name }}
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  registry-url: https://registry.npmjs.org/
+                  cache: npm
+            - run: npm ci
+            - run: npm test
+            - run: npm run validate-manifest
+            - run: npm run build
+            - name: Package plugin zip
+              run: |
+                  mkdir "$PLUGIN_NAME"
+                  cp main.js manifest.json styles.css "$PLUGIN_NAME"
+                  zip -r "$PLUGIN_NAME.zip" "$PLUGIN_NAME"
+            - name: Create GitHub release
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  TAG="${{ inputs.tag || github.ref_name }}"
+                  gh release create "$TAG" \
+                      main.js manifest.json styles.css "$PLUGIN_NAME.zip" \
+                      --title "$TAG" \
+                      --generate-notes
+            - name: Publish to npm
+              run: npm publish --scope=@javalent --access=public
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    notify:
+        needs: release
+        uses: javalent/workflows/.github/workflows/notify.yml@main
+        secrets: inherit
+        with:
+            name: Fantasy Statblocks
+            repo: fantasy-statblocks
