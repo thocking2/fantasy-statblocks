@@ -157,7 +157,7 @@ export const BESTIARY: Monster[] = [
             { wisdom: 6 },
             { charisma: 8 }
         ],
-        skillsaves: [null, { perception: 11 }, { stealth: 7 }],
+        skillsaves: [{}, { perception: 11 }, { stealth: 7 }],
         damage_vulnerabilities: "",
         damage_resistances: "",
         damage_immunities: "acid",
@@ -344,7 +344,7 @@ export const BESTIARY: Monster[] = [
             { wisdom: 7 },
             { charisma: 9 }
         ],
-        skillsaves: [null, { perception: 12 }, { stealth: 5 }],
+        skillsaves: [{}, { perception: 12 }, { stealth: 5 }],
         damage_vulnerabilities: "",
         damage_resistances: "",
         damage_immunities: "lightning",
@@ -436,7 +436,7 @@ export const BESTIARY: Monster[] = [
             { charisma: 8 }
         ],
         skillsaves: [
-            null,
+            {},
             { history: 7 },
             { persuasion: 8 },
             { perception: 11 },

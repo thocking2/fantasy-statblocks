@@ -31,7 +31,7 @@ export const StatblockFateCore: StatblockItem[] = [
                         properties: ["description"],
                         conditioned: true,
                         markdown: true,
-                        text: null,
+                        text: "",
                         dice: false
                     },
                     {
@@ -39,7 +39,7 @@ export const StatblockFateCore: StatblockItem[] = [
                         id: nanoid(),
                         properties: ["aspects"],
                         markdown: true,
-                        text: null,
+                        text: "",
                         dice: false,
                         conditioned: true,
                         heading: "Aspects"
@@ -49,7 +49,7 @@ export const StatblockFateCore: StatblockItem[] = [
                         id: nanoid(),
                         properties: ["temporaryAspects"],
                         markdown: true,
-                        text: null,
+                        text: "",
                         dice: false,
                         conditioned: true,
                         heading: "Temporary Aspects"

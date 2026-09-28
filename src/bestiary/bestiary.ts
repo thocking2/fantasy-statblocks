@@ -33,6 +33,7 @@ declare module "obsidian" {
             name: `fantasy-statblocks:bestiary:sorted:${T}`,
             callback: (values: Array<Monster>) => void
         ): EventRef;
+        trigger(name: string, ...data: any[]): void;
     }
 }
 
@@ -43,7 +44,7 @@ class BestiaryClass {
 
     #resolved = false;
 
-    enableSRD: boolean;
+    enableSRD!: boolean;
 
     #indices: Map<string, Map<string, Set<string>>> = new Map();
 
@@ -86,7 +87,7 @@ class BestiaryClass {
                 this.#sorted.set(
                     field,
                     this.getBestiaryCreatures().sort((a, b) =>
-                        this.#sorters.get(field)(a, b)
+                        this.#sorters.get(field)!(a, b)
                     )
                 );
                 this.#events.trigger(
@@ -119,7 +120,7 @@ class BestiaryClass {
             this.#events.offref(ref);
         };
     }
-    #events: Workspace;
+    #events!: Workspace;
     initialize(plugin: StatBlockPlugin) {
         this.registerIndex("source");
         this.registerSorter("name", (a, b) => a.name.localeCompare(b.name));
@@ -183,7 +184,7 @@ class BestiaryClass {
                         if (!map.has(value)) {
                             map.set(value, new Set([creature.name]));
                         } else {
-                            map.get(value).add(creature.name);
+                            map.get(value)!.add(creature.name);
                         }
                     }
 
@@ -200,7 +201,7 @@ class BestiaryClass {
                 if (field in creature) {
                     const value = stringify(creature[field as keyof Monster]);
                     if (map.has(value)) {
-                        map.get(value).delete(creature.name);
+                        map.get(value)!.delete(creature.name);
                     }
                     this.#events.trigger(
                         `fantasy-statblocks:bestiary:indexed:${field}`
@@ -237,12 +238,13 @@ class BestiaryClass {
         ) {
             this.#bestiary.delete(name);
         }
-        this.#removeFromIndex(this.#local.get(name));
+        const local = this.#local.get(name);
+        if (local) this.#removeFromIndex(local);
         this.#local.delete(name);
         if (this.#ephemeral.has(name)) {
-            this.#bestiary.set(name, this.#ephemeral.get(name));
+            this.#bestiary.set(name, this.#ephemeral.get(name)!);
         } else if (this.enableSRD && BESTIARY_BY_NAME.has(name)) {
-            this.#bestiary.set(name, BESTIARY_BY_NAME.get(name));
+            this.#bestiary.set(name, BESTIARY_BY_NAME.get(name)!);
         }
         this.#triggerUpdatedCallbacks();
         this.#triggerSort();
@@ -260,7 +262,8 @@ class BestiaryClass {
         this.#triggerUpdatedCallbacks();
     }
     removeEphemeralCreature(name: string) {
-        this.#removeFromIndex(this.#bestiary.get(name));
+        const ephemeral = this.#bestiary.get(name);
+        if (ephemeral) this.#removeFromIndex(ephemeral);
         this.#bestiary.delete(name);
         this.#ephemeral.delete(name);
         this.#triggerUpdatedCallbacks();
@@ -387,7 +390,7 @@ class BestiaryClass {
                     );
                     continue;
                 }
-                extended.add(creature.name);
+                extended.add(creature.name!);
                 const extensionMonster = this.#bestiary.get(extension);
                 if (!extensionMonster) continue;
                 extensions.push(
@@ -402,7 +405,7 @@ class BestiaryClass {
         creature: Partial<Monster>,
         extended: Set<string>
     ): string[] {
-        let extensions: string[] = [creature.name];
+        let extensions: string[] = [creature.name!];
         if (
             !("extends" in creature) ||
             !(
@@ -421,7 +424,7 @@ class BestiaryClass {
                     );
                     continue;
                 }
-                extended.add(creature.name);
+                extended.add(creature.name!);
                 const extensionMonster = this.#bestiary.get(extension);
                 if (!extensionMonster) continue;
                 extensions.push(
@@ -444,8 +447,11 @@ class BestiaryClass {
     ): Promise<Partial<Monster> | null> {
         return new Promise((resolve) => {
             this.onResolved(() => {
-                if (!this.hasCreature(name)) resolve(null);
-                let creature = this.#bestiary.get(name);
+                if (!this.hasCreature(name)) {
+                    resolve(null);
+                    return;
+                }
+                let creature = this.#bestiary.get(name)!;
                 resolve(
                     Object.assign(
                         {},
@@ -466,7 +472,7 @@ class BestiaryClass {
         if (!this.isResolved())
             throw new Error("The bestiary is not fully resolved.");
         if (!this.hasCreature(name)) return null;
-        let creature = this.#bestiary.get(name);
+        let creature = this.#bestiary.get(name)!;
         return Object.assign(
             {},
             ...this.getExtensions(creature, new Set(creature.name)),

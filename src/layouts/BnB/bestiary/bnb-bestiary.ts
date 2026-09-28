@@ -249,7 +249,7 @@ export const LayoutBnBBestiary: DefaultLayout = {
                     "properties": [
                         "Image"
                     ],
-                    "text": null,
+                    "text": "",
                     "fallback": "-",
                     "heading": "",
                     "conditioned": true

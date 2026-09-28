@@ -37,7 +37,7 @@ export class CreatureView extends ItemView {
         );
         this.containerEl.on("click", "a.internal-link", (ev) =>
             this.app.workspace.openLinkText(
-                (ev.target as HTMLAnchorElement).dataset.href,
+                (ev.target as HTMLAnchorElement).dataset.href ?? "",
                 "fantasy-statblocks"
             )
         );

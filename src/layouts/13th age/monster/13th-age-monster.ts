@@ -40,7 +40,7 @@ export const Layout13thAgeMonster: DefaultLayout = {
                     "properties": [
                         "flavor_text"
                     ],
-                    "text": null,
+                    "text": "",
                     "fallback": "-",
                     "conditioned": true,
                     "markdown": true,
@@ -179,7 +179,7 @@ export const Layout13thAgeMonster: DefaultLayout = {
                     "properties": [
                         "description"
                     ],
-                    "text": null,
+                    "text": "",
                     "conditioned": true,
                     "fallback": "-",
                     "markdown": true

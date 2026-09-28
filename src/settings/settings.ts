@@ -1073,7 +1073,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
         });
         inputPathbuilder.onchange = async () => {
             const { files } = inputPathbuilder;
-            if (!files.length) return;
+            if (!files?.length) return;
             const monsters = await this.importer.import(files, "pathbuilder");
             if (monsters && monsters.length) {
                 await this.plugin.saveMonsters(monsters);

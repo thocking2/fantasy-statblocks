@@ -125,9 +125,9 @@ export function getModalForBlock(
 abstract class BlockModal<
     T extends StatblockItem
 > extends FantasyStatblockModal {
-    block: T;
-    saved: boolean;
-    editor: EditorView;
+    block!: T;
+    saved: boolean = false;
+    editor!: EditorView;
     constructor(public plugin: StatBlockPlugin, block?: T) {
         super(plugin);
         if (block) this.block = copy(block);
@@ -175,7 +175,7 @@ class GroupModal extends BlockModal<GroupItem | InlineItem> {
                 "This text will be used for the section heading. Can be left blank."
             )
             .addText((t) => {
-                t.setValue(this.block.heading).onChange(
+                t.setValue(this.block.heading ?? "").onChange(
                     (v) => (this.block.heading = v)
                 );
             });
@@ -185,7 +185,7 @@ class GroupModal extends BlockModal<GroupItem | InlineItem> {
                 "If present, the block will have a horizontal rule placed after it."
             )
             .addToggle((t) => {
-                t.setValue(this.block.hasRule).onChange(
+                t.setValue(this.block.hasRule ?? false).onChange(
                     (v) => (this.block.hasRule = v)
                 );
             });
@@ -195,7 +195,7 @@ class GroupModal extends BlockModal<GroupItem | InlineItem> {
                 "All nested elements inside this group container will receive this CSS class. If blank, no class will be applied."
             )
             .addText((t) => {
-                t.setValue(this.block.cls).onChange(
+                t.setValue(this.block.cls ?? "").onChange(
                     (v) => (this.block.cls = v)
                 );
             });
@@ -211,7 +211,7 @@ class GroupModal extends BlockModal<GroupItem | InlineItem> {
                 "The block will not be added if the associated properties are not present."
             )
             .addToggle((t) => {
-                t.setValue(block.conditioned).onChange((v) => {
+                t.setValue(block.conditioned ?? false).onChange((v) => {
                     block.conditioned = v;
 
                     this.buildConditions(el);
@@ -229,7 +229,7 @@ class CollapseModal extends BlockModal<CollapseItem> {
                 "This text will be used for the section heading. Can be left blank."
             )
             .addText((t) => {
-                t.setValue(this.block.heading).onChange(
+                t.setValue(this.block.heading ?? "").onChange(
                     (v) => (this.block.heading = v)
                 );
             });
@@ -247,7 +247,7 @@ class CollapseModal extends BlockModal<CollapseItem> {
                 "If present, the block will have a horizontal rule placed after it."
             )
             .addToggle((t) => {
-                t.setValue(this.block.hasRule).onChange(
+                t.setValue(this.block.hasRule ?? false).onChange(
                     (v) => (this.block.hasRule = v)
                 );
             });
@@ -255,7 +255,7 @@ class CollapseModal extends BlockModal<CollapseItem> {
     }
 }
 class JavaScriptModal extends BlockModal<JavaScriptItem> {
-    editor: EditorView;
+    editor!: EditorView;
     async display() {
         this.contentEl.empty();
 
@@ -296,7 +296,7 @@ class JavaScriptModal extends BlockModal<JavaScriptItem> {
     }
 }
 class LayoutModal extends BlockModal<LayoutItem> {
-    editor: EditorView;
+    editor!: EditorView;
     constructor(
         plugin: StatBlockPlugin,
         block: LayoutItem,
@@ -356,7 +356,7 @@ class IfElseModal extends BlockModal<IfElseItem> {
 abstract class EditorEnabledModal<
     I extends StatblockItem
 > extends BlockModal<I> {
-    editor: EditorView;
+    editor!: EditorView;
     propertiesEl = createDiv("block-properties-container");
     separatorEl = createDiv("block-separator-container");
     conditionsEl = createDiv("block-conditions-container");
@@ -416,7 +416,7 @@ class ActionModal extends EditorEnabledModal<ActionItem> {
             .setName("Icon")
             .setDesc("Choose the icon to use for the button.")
             .addText((t) => {
-                t.setValue(this.block.icon);
+                t.setValue(this.block.icon ?? "");
                 const icons = getIconIds().map((v) =>
                     v.replace(/^lucide-/, "")
                 );
@@ -436,13 +436,13 @@ class ActionModal extends EditorEnabledModal<ActionItem> {
                 };
             })
             .addExtraButton((b) => {
-                b.setIcon(this.block.icon).setDisabled(true);
+                b.setIcon(this.block.icon ?? "").setDisabled(true);
             });
         new Setting(el)
             .setName("Action")
             .setDesc("Choose a Command to run when this action is executed.")
             .addText((t) => {
-                t.setValue(this.block.action);
+                t.setValue(this.block.action ?? "");
                 const commands = this.app.commands.listCommands();
                 const modal = new CommandSuggester(this.app, t, commands);
 
@@ -487,7 +487,7 @@ class ActionModal extends EditorEnabledModal<ActionItem> {
             );
 
         const component = new TextAreaComponent(el).setValue(
-            this.block.callback
+            this.block.callback ?? ""
         );
         component.inputEl.addClass("statblock-textarea");
         this.editor = editorFromTextArea(
@@ -575,7 +575,7 @@ return ["The monster guesses you have: ", { text: diceText }, " freckles."];
                 );
 
             const component = new TextAreaComponent(el).setValue(
-                this.block.diceCallback
+                this.block.diceCallback ?? ""
             );
             component.inputEl.addClasses([
                 "statblock-textarea",
@@ -603,7 +603,7 @@ return ["The monster guesses you have: ", { text: diceText }, " freckles."];
                 "The block will not be added if the associated properties are not present."
             )
             .addToggle((t) => {
-                t.setValue(block.conditioned).onChange((v) => {
+                t.setValue(block.conditioned ?? false).onChange((v) => {
                     block.conditioned = v;
 
                     this.buildConditions(el);
@@ -628,7 +628,9 @@ return ["The monster guesses you have: ", { text: diceText }, " freckles."];
                 "If present, the block will have a horizontal rule placed after it."
             )
             .addToggle((t) => {
-                t.setValue(block.hasRule).onChange((v) => (block.hasRule = v));
+                t.setValue(block.hasRule ?? false).onChange(
+                    (v) => (block.hasRule = v)
+                );
             });
     }
     buildDice(el: HTMLDivElement) {
@@ -642,7 +644,7 @@ return ["The monster guesses you have: ", { text: diceText }, " freckles."];
                 )
 
                 .addToggle((t) =>
-                    t.setValue(block.dice).onChange((v) => {
+                    t.setValue(block.dice ?? false).onChange((v) => {
                         block.dice = v;
                         this.buildDice(el);
                     })
@@ -735,7 +737,7 @@ class PropertyModal extends MarkdownEnabledModal<PropertyItem> {
             );
 
         const component = new TextAreaComponent(el).setValue(
-            this.block.callback
+            this.block.callback ?? ""
         );
         component.inputEl.addClass("statblock-textarea");
         this.editor = editorFromTextArea(
@@ -747,7 +749,7 @@ class PropertyModal extends MarkdownEnabledModal<PropertyItem> {
             })
         );
     }
-    editor: EditorView;
+    editor!: EditorView;
     onClose() {
         this.editor?.destroy();
     }
@@ -758,7 +760,7 @@ class PropertyModal extends MarkdownEnabledModal<PropertyItem> {
             .setName("Display Text")
             .setDesc("This text will be used for the property name.")
             .addText((t) => {
-                t.setValue(this.block.display).onChange(
+                t.setValue(this.block.display ?? "").onChange(
                     (v) => (this.block.display = v)
                 );
             });
@@ -772,7 +774,7 @@ class SavesModal extends MarkdownEnabledModal<SavesItem> {
             .setName("Display Text")
             .setDesc("This text will be used for the property name.")
             .addText((t) => {
-                t.setValue(this.block.display).onChange(
+                t.setValue(this.block.display ?? "").onChange(
                     (v) => (this.block.display = v)
                 );
             });
@@ -807,7 +809,7 @@ class SavesModal extends MarkdownEnabledModal<SavesItem> {
             );
 
         const component = new TextAreaComponent(el).setValue(
-            this.block.callback
+            this.block.callback ?? ""
         );
         component.inputEl.addClass("statblock-textarea");
         this.editor = editorFromTextArea(
@@ -829,7 +831,7 @@ class SpellsModal extends MarkdownEnabledModal<SpellsItem> {
                 "Name to display for the Spellcasting trait. Defaults to Spellcasting if not provided."
             )
             .addText((t) => {
-                t.setValue(this.block.heading).onChange(
+                t.setValue(this.block.heading ?? "").onChange(
                     (v) => (this.block.heading = v)
                 );
             });
@@ -881,7 +883,7 @@ class SubheadingModal extends BasicModal<SubHeadingItem> {
             .setName("Separator")
             .setDesc("Text separating properties")
             .addText((t) => {
-                t.setValue(this.block.separator).onChange((v) => {
+                t.setValue(this.block.separator ?? "").onChange((v) => {
                     //If onchange(v) parameter is empty, get default ", " or v value
                     if (v === " ") {
                         this.block.separator = v;
@@ -915,7 +917,7 @@ class TableModal extends BasicModal<TableItem> {
                 })
             );
         const component = new TextAreaComponent(el).setValue(
-            this.block.modifier
+            this.block.modifier ?? ""
         );
         component.inputEl.addClasses([
             "statblock-textarea",
@@ -985,7 +987,7 @@ class TraitsModal extends MarkdownEnabledModal<TraitsItem> {
                 "The Section heading will be set to the value of the specified property."
             )
             .addToggle((t) => {
-                t.setValue(this.block.headingProp).onChange((v) => {
+                t.setValue(this.block.headingProp ?? false).onChange((v) => {
                     this.block.headingProp = v;
                     this.display();
                 });
@@ -998,7 +1000,7 @@ class TraitsModal extends MarkdownEnabledModal<TraitsItem> {
                     : "This text will be used for the section heading. Can be left blank."
             )
             .addText((t) => {
-                t.setValue(this.block.heading).onChange(
+                t.setValue(this.block.heading ?? "").onChange(
                     (v) => (this.block.heading = v)
                 );
             });
@@ -1018,7 +1020,7 @@ class TraitsModal extends MarkdownEnabledModal<TraitsItem> {
         subheading.controlEl.detach();
 
         new TextAreaComponent(this.contentEl)
-            .setValue(this.block.subheadingText)
+            .setValue(this.block.subheadingText ?? "")
             .onChange((v) => (this.block.subheadingText = v));
     }
     buildAdvanced(el: HTMLDivElement): void {
@@ -1051,7 +1053,7 @@ class TraitsModal extends MarkdownEnabledModal<TraitsItem> {
             );
 
         const component = new TextAreaComponent(el).setValue(
-            this.block.callback
+            this.block.callback ?? ""
         );
         component.inputEl.addClass("statblock-textarea");
         this.editor = editorFromTextArea(
@@ -1091,7 +1093,7 @@ class TextModal extends MarkdownEnabledModal<TextItem> {
                 "The Section heading will be set to the value of the specified property."
             )
             .addToggle((t) => {
-                t.setValue(this.block.headingProp).onChange((v) => {
+                t.setValue(this.block.headingProp ?? false).onChange((v) => {
                     this.block.headingProp = v;
                     this.display();
                 });
@@ -1104,7 +1106,7 @@ class TextModal extends MarkdownEnabledModal<TextItem> {
                     : "This text will be used for the section heading. Can be left blank."
             )
             .addText((t) => {
-                t.setValue(this.block.heading).onChange(
+                t.setValue(this.block.heading ?? "").onChange(
                     (v) => (this.block.heading = v)
                 );
             });

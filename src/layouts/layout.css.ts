@@ -617,6 +617,6 @@ for (const group of CSSPropertyGroups) {
         if (!PropertiesByType.has(property.type)) {
             PropertiesByType.set(property.type, []);
         }
-        PropertiesByType.get(property.type).push(property);
+        PropertiesByType.get(property.type)!.push(property);
     }
 }

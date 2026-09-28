@@ -54,7 +54,7 @@ const ctx: Worker = self as any;
 class Parser {
     queue: string[] = [];
     parsing: boolean = false;
-    debug: boolean;
+    debug: boolean = false;
 
     constructor() {
         //Add Files to Queue
@@ -110,7 +110,7 @@ class Parser {
         }
     }
 
-    findFirstStatBlock(content: string): string {
+    findFirstStatBlock(content: string): string | null {
         let matches = content.match(
             /^```[^\S\r\n]*statblock\s?\n([\s\S]+?)^```/m
         );
@@ -123,6 +123,7 @@ class Parser {
         this.parsing = true;
         while (this.queue.length) {
             const path = this.queue.shift();
+            if (!path) continue;
             if (this.debug) {
                 console.debug(
                     `Fantasy Statblocks: Parsing ${path} for statblocks (${this.queue.length} to go)`
@@ -133,7 +134,7 @@ class Parser {
             if (!path.endsWith(".md")) {
                 continue;
             }
-            if (!event.data) continue;
+            if (!event || !event.data) continue;
 
             const { file, statblock } = event.data;
 
@@ -145,16 +146,17 @@ class Parser {
                     //frontmatter
                     this.parseFrontmatter(event.data.info, file);
                 }
-            } catch (e) {
+            } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : String(e);
                 console.error(
-                    `There was an error parsing the Statblock in ${path}: \n\n${e.message}`
+                    `There was an error parsing the Statblock in ${path}: \n\n${message}`
                 );
             }
 
             ctx.postMessage<FinishFileMessage>({ type: "done", data: path });
         }
         this.parsing = false;
-        ctx.postMessage<SaveMessage>({ type: "save", data: null });
+        ctx.postMessage<SaveMessage>({ type: "save", data: undefined });
     }
 
     async getFileData(path: string): Promise<FileCacheMessage | null> {
@@ -162,7 +164,7 @@ class Parser {
             ctx.addEventListener(
                 "message",
                 (event: MessageEvent<FileCacheMessage | null>) => {
-                    if (event.data.type == "file") {
+                    if (event.data && event.data.type == "file") {
                         resolve(event.data);
                     }
                 }

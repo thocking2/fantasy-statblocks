@@ -649,7 +649,7 @@ return "";`
         properties: ["spellsNotes"],
         conditioned: true,
 
-        text: null
+        text: ""
     },
     {
         type: "traits",
@@ -680,7 +680,7 @@ return "";`
                 id: nanoid(),
                 properties: ["legendary_description"],
                 conditioned: true,
-                text: null
+                text: ""
             },
             {
                 type: "traits",
@@ -703,7 +703,7 @@ return "";`
                 id: nanoid(),
                 properties: ["mythic_description"],
                 conditioned: true,
-                text: null
+                text: ""
             },
             {
                 type: "traits",
