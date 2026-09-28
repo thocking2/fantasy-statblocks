@@ -1,0 +1,52 @@
+name: Version Bump
+
+# Automates the "maintainer runs npm version locally" step of the release
+# flow (see release.yml/tag.yml): pick a bump type here instead, and this
+# pushes the resulting "chore: release x.y.z" commit to main. From there
+# the existing pipeline takes over unchanged - ci.yml runs, tag.yml tags
+# the commit once CI passes, and release.yml builds and publishes it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # --no-git-tag-version still runs the "version" lifecycle script
+      # (scripts/version-bump.mjs), which updates manifest.json/versions.json
+      # and stages them, but skips npm's own commit+tag so tag.yml remains
+      # the single place a release tag gets created.
+      - name: Bump version
+        run: npm version ${{ inputs.bump }} --no-git-tag-version
+
+      - name: Commit and push
+        run: |
+          version=$(node -p "require('./manifest.json').version")
+          git add package.json package-lock.json manifest.json versions.json
+          git commit -m "chore: release $version"
+          git push
