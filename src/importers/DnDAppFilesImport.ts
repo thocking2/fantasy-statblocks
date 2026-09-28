@@ -1,4 +1,4 @@
-import type { Monster, Spell, Trait } from "types";
+import type { Monster, Spell, Trait } from "index";
 import { DOMParser } from "@xmldom/xmldom";
 
 export async function buildMonsterFromAppFile(file: File): Promise<Monster[]> {
@@ -12,10 +12,10 @@ export async function buildMonsterFromAppFile(file: File): Promise<Monster[]> {
             const monsters = dom.getElementsByTagName("monster");
             const importedMonsters: Monster[] = [];
             if (!monsters.length) return;
-            for (let monster of Array.from(monsters)) {
+            for (let monster of Array.from(monsters) as unknown as Element[]) {
                 try {
                     const importedMonster: Monster = {
-                        image: null,
+                        image: undefined,
                         name: getParameter(monster, "name"),
                         size: getSize(monster),
                         type: getParameter(monster, "type"),
@@ -53,7 +53,8 @@ export async function buildMonsterFromAppFile(file: File): Promise<Monster[]> {
                         actions: getTraits(monster, "action"),
                         legendary_actions: getTraits(monster, "legendary"),
                         reactions: getTraits(monster, "reaction"),
-                        source: getSource(monster)
+                        source: getSource(monster),
+                        bestiary: false
                     };
                     importedMonsters.push(importedMonster);
                 } catch (e) {
@@ -70,7 +71,8 @@ export async function buildMonsterFromAppFile(file: File): Promise<Monster[]> {
 
 function getParameter(monster: Element, tag: string): string {
     const element = monster.getElementsByTagName(tag);
-    if (element && element.length) return element[0].textContent;
+    if (element && element.length) return element[0].textContent ?? "";
+    return "";
 }
 function getTraits(
     monster: Element,
@@ -103,19 +105,21 @@ function getSpells(monster: Element): Spell[] {
     if (!monster.getElementsByTagName("trait")?.length) return [];
     const traits = Array.from(monster.getElementsByTagName("trait"));
     const spellcasting = traits.find((x) =>
-        x.getElementsByTagName("name")[0]?.textContent.includes("Spellcasting")
+        x
+            .getElementsByTagName("name")[0]
+            ?.textContent?.includes("Spellcasting")
     );
     if (!spellcasting) return [];
     return Array.from(spellcasting.getElementsByTagName("text"))
-        .map((x) => x.textContent.replace(/(&#8226;|•)/u, "").trim())
+        .map((x) => (x.textContent ?? "").replace(/(&#8226;|•)/u, "").trim())
         .filter((x) => x.length);
 }
 
 function getSkillSaves(monster: Element): { [key: string]: number }[] {
     if (!monster.getElementsByTagName("skill")?.length) return [];
-    let saves = monster
-        .getElementsByTagName("skill")[0]
-        .textContent.split(", ");
+    let saves = (
+        monster.getElementsByTagName("skill")[0].textContent ?? ""
+    ).split(", ");
     let ret: { [key: string]: number }[] = [];
     saves.forEach((save) => {
         const skill = save.split(/\s[\+\-]/);
@@ -150,7 +154,9 @@ function getSaves(monster: Element): {
     charisma?: number;
 }[] {
     if (!monster.getElementsByTagName("save")?.length) return [];
-    let saves = monster.getElementsByTagName("save")[0].textContent.split(", ");
+    let saves = (
+        monster.getElementsByTagName("save")[0].textContent ?? ""
+    ).split(", ");
     let ret: {
         strength?: number;
         dexterity?: number;
@@ -169,7 +175,11 @@ function getSaves(monster: Element): {
 function getHP(monster: Element, arg1: "hp" | "hit_dice"): string {
     if (!monster.getElementsByTagName("hp")?.length) return "";
     const monsterHP = monster.getElementsByTagName("hp")[0].textContent;
-    let [, hp, hit_dice] = monsterHP.match(/(\d+) \(([\s\S]+)\)/) ?? [, "", ""];
+    let [, hp, hit_dice] = monsterHP?.match(/(\d+) \(([\s\S]+)\)/) ?? [
+        ,
+        "",
+        ""
+    ];
     return { hp: hp, hit_dice: hit_dice }[arg1];
 }
 const SIZES: { [key: string]: string } = {
@@ -182,7 +192,10 @@ const SIZES: { [key: string]: string } = {
 };
 function getSize(monster: Element): string {
     if (monster.getElementsByTagName("size")) {
-        return SIZES[monster.getElementsByTagName("size")[0].textContent] ?? "";
+        return (
+            SIZES[monster.getElementsByTagName("size")[0].textContent ?? ""] ??
+            ""
+        );
     }
     return "";
 }
@@ -191,7 +204,7 @@ function getAC(monster: Element): number {
     if (monster.getElementsByTagName("ac")) {
         const [, ac] = monster
             .getElementsByTagName("ac")[0]
-            ?.textContent.match(/(\d+)/);
+            ?.textContent?.match(/(\d+)/) ?? [];
         return Number(ac);
     }
     return 0;
@@ -199,7 +212,7 @@ function getAC(monster: Element): number {
 function getSource(monster: Element): string {
     let source = "Unknown";
     if (monster.getElementsByTagName("source")?.length) {
-        source = monster.getElementsByTagName("source")[0].textContent;
+        source = monster.getElementsByTagName("source")[0].textContent ?? source;
     } else if (
         monster.getElementsByTagName("trait")?.length &&
         Array.from(monster.getElementsByTagName("trait")).find(
@@ -209,17 +222,18 @@ function getSource(monster: Element): string {
         let trait = Array.from(monster.getElementsByTagName("trait")).find(
             (t) => t.getElementsByTagName("name")?.[0]?.textContent == "Source"
         );
-        source = trait
-            ?.getElementsByTagName("text")?.[0]
-            ?.textContent?.replace(/p. \d+/, "")
-            .trim();
+        source =
+            trait
+                ?.getElementsByTagName("text")?.[0]
+                ?.textContent?.replace(/p. \d+/, "")
+                .trim() ?? source;
     } else if (monster.getElementsByTagName("description")?.length) {
         const description = monster.getElementsByTagName("description");
         const searchString = "Source: ";
-        if (description[0].textContent.includes(searchString)) {
-            const sourcePos =
-                description[0].textContent.lastIndexOf(searchString);
-            const sources = description[0].textContent
+        const descriptionText = description[0].textContent ?? "";
+        if (descriptionText.includes(searchString)) {
+            const sourcePos = descriptionText.lastIndexOf(searchString);
+            const sources = descriptionText
                 .slice(sourcePos + searchString.length)
                 .split(/, ?/);
             source = sources[0];

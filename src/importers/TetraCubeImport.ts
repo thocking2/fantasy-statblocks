@@ -1,4 +1,4 @@
-import type { Monster, Spell, Trait } from "types";
+import type { Monster, Spell, Trait } from "index";
 const CR: { [key: string]: any } = {
     "0": {
         cr: "0",
@@ -239,14 +239,14 @@ class TetraMonster {
     static parse(monster: any) {
         const importer = new TetraMonster(monster);
         const importedMonster: Monster = {
-            image: null,
+            image: undefined,
             name: monster.name,
             source: "TetraCube",
             type: monster.type,
             subtype: monster.tag,
             size: monster.size,
             alignment: monster.alignment,
-            hp: importer.getHP(monster)?.hp,
+            hp: importer.getHP(monster)?.hp ?? 0,
             hit_dice: importer.getHP(monster)?.dice,
             ac: (monster.ac ?? [])[0]?.ac ?? "",
             speed: importer.getSpeedString(monster),
@@ -261,7 +261,7 @@ class TetraMonster {
             damage_immunities: importer.parseImmune(monster, "i"),
             damage_resistances: importer.parseImmune(monster, "r"),
             damage_vulnerabilities: importer.parseImmune(monster, "v"),
-            condition_immunities: importer.parseConditions(monster),
+            condition_immunities: importer.parseConditions(monster) ?? "",
             saves: importer.getSaves(monster),
             skillsaves: importer.getSkills(monster),
             senses: importer.getSenses(monster),
@@ -272,20 +272,21 @@ class TetraMonster {
             bonus_actions: importer.getTraits(monster.bonusActions),
             reactions: importer.getTraits(monster.reactions),
             legendary_description: (monster.isLegendary ?? false) ? monster.legendariesDescription : null,
-            legendary_actions: (monster.isLegendary ?? false) ? importer.getTraits(monster.legendaries) : null,
+            legendary_actions: (monster.isLegendary ?? false) ? importer.getTraits(monster.legendaries) : undefined,
             mythic_description: (monster.isMythic ?? false) ? monster.mythicDescription : null,
-            mythic_actions: (monster.isMythic ?? false) ? importer.getTraits(monster.mythics) : null,
+            mythic_actions: (monster.isMythic ?? false) ? importer.getTraits(monster.mythics) : undefined,
             lair_description: (monster.isLair ?? false) ? monster.lairDescription : null,
-            lair_actions: (monster.isLair ?? false) ? importer.getTraits(monster.lairs) : null,
+            lair_actions: (monster.isLair ?? false) ? importer.getTraits(monster.lairs) : undefined,
             lair_description_end: (monster.isLair ?? false) ? monster.lairDescriptionEnd : null,
             regional_description: (monster.isRegional ?? false) ? monster.regionalDescription : null,
             regional_actions: (monster.isRegional ?? false) ? importer.getTraits(monster.regionals) : null,
             regional_description_end: (monster.isRegional ?? false) ? monster.regionalDescriptionEnd : null,
-            spells: importer.getSpells(monster.abilities)
+            spells: importer.getSpells(monster.abilities),
+            bestiary: false
         };
         return importedMonster;
     }
-    getHP(monster: any): { hp?: number; dice?: string } {
+    getHP(monster: any): { hp?: number; dice?: string } | undefined {
         if (
             monster.customHP ||
             (monster.hitDice && /(\d+) \((.+)\)/.test(monster.hpText))
@@ -473,7 +474,7 @@ class TetraMonster {
             );
     }
 
-    getTraits(abilities: any): Trait[] {
+    getTraits(abilities: any): Trait[] | undefined {
         if (!abilities || !abilities.length) return;
         const traits = abilities
             .filter((ability: Trait) => ability.name != "Spellcasting")
@@ -486,7 +487,7 @@ class TetraMonster {
         return traits;
     }
 
-    getSpells(monster: any): Spell[] {
+    getSpells(monster: any): Spell[] | undefined {
         if (!monster.abilities || !monster.abilities.length) return;
         let { desc } =
             monster.abilities.find(
@@ -556,7 +557,7 @@ class TetraMonster {
         }
         return isNaN(Number(prof)) ? 0 : Number(prof);
     }
-    parseConditions(monster: any): string {
+    parseConditions(monster: any): string | undefined {
         if ("conditions" in monster && Array.isArray(monster.conditions)) {
             return monster.conditions.map((c: any) => c.name).join(", ");
         }

@@ -109,12 +109,9 @@ ctx.onmessage = async (event) => {
     ctx.postMessage({ monsters });
 };
 
-ctx.addEventListener(
-    "unhandledrejection",
-    function (event: PromiseRejectionEvent) {
-        // the event object has two special properties:
-        // event.promise - the promise that generated the error
-        // event.reason  - the unhandled error object
-        throw event.reason;
-    }
-);
+ctx.addEventListener("unhandledrejection", function (event: Event) {
+    // the event object has two special properties:
+    // event.promise - the promise that generated the error
+    // event.reason  - the unhandled error object
+    throw (event as PromiseRejectionEvent).reason;
+});

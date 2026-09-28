@@ -78,48 +78,51 @@ export async function build5eMonsterFromFile(file: File): Promise<Monster[]> {
                     monsters = [json];
                 } else {
                     reject("Invalid monster JSON provided.");
+                    return;
                 }
                 const imported: Monster[] = [];
                 for (const monster of monsters) {
                     try {
                         const importedMonster: Monster = {
-                            image: null,
+                            image: undefined,
                             bestiary: true,
-                            name: monster.name,
+                            name: monster.name ?? "",
                             source: getSource(monster),
-                            type: getType(monster.type),
-                            subtype: getSubType(monster.type),
-                            size: SIZE_ABV_TO_FULL[monster.size?.[0]],
+                            type: getType(monster.type) ?? "",
+                            subtype: getSubType(monster.type) ?? "",
+                            size: monster.size?.[0]
+                                ? SIZE_ABV_TO_FULL[monster.size[0]]
+                                : "",
                             alignment: getMonsterAlignment(monster),
                             hp:
                                 monster.hp && "average" in monster.hp
-                                    ? monster.hp?.average
-                                    : null,
+                                    ? monster.hp.average
+                                    : 0,
                             hit_dice:
                                 monster.hp && "formula" in monster.hp
                                     ? monster.hp?.formula
                                     : "",
-                            ac: getAc(monster.ac),
+                            ac: getAc(monster.ac) ?? "",
                             speed: getSpeedString(monster),
                             stats: [
-                                monster.str,
-                                monster.dex,
-                                monster.con,
-                                monster.int,
-                                monster.wis,
-                                monster.cha
+                                monster.str ?? 0,
+                                monster.dex ?? 0,
+                                monster.con ?? 0,
+                                monster.int ?? 0,
+                                monster.wis ?? 0,
+                                monster.cha ?? 0
                             ],
                             damage_immunities: parseString(
-                                parseImmune(monster.immune)
+                                parseImmune(monster.immune ?? null)
                             ),
                             damage_resistances: parseString(
-                                parseImmune(monster.resist)
+                                parseImmune(monster.resist ?? null)
                             ),
                             damage_vulnerabilities: parseString(
-                                parseImmune(monster.vulnerable)
+                                parseImmune(monster.vulnerable ?? null)
                             ),
                             condition_immunities: parseString(
-                                parseImmune(monster.conditionImmune)
+                                parseImmune(monster.conditionImmune ?? null)
                             ),
                             saves: Object.entries(monster.save ?? {})
                                 .map(
@@ -133,31 +136,52 @@ export async function build5eMonsterFromFile(file: File): Promise<Monster[]> {
                                         const [, v] =
                                             thr[1]?.match(/.*?(\d+)/) ?? [];
                                         if (!v) return;
-                                        return { [abilityMap[thr[0]]]: v };
+                                        return { [abilityMap[thr[0]]]: Number(v) };
                                     }
                                 )
-                                .filter((v) => v),
+                                .filter(
+                                    (v): v is Record<string, number> =>
+                                        v !== undefined
+                                ),
                             skillsaves: getSkillsaves(monster),
                             senses: getSenses(monster),
                             languages: stringify(
-                                monster.languages,
+                                monster.languages ?? [],
                                 0,
                                 ", ",
                                 false
                             ),
-                            cr: getCR(monster.cr),
+                            cr: getCR(monster.cr) ?? "",
                             traits:
-                                monster.trait?.flatMap(normalizeEntries) ?? [],
+                                (
+                                    monster.trait as unknown as
+                                        | RawEntryBlock[]
+                                        | undefined
+                                )?.flatMap(normalizeEntries) ?? [],
                             actions:
-                                monster.action?.flatMap(normalizeEntries) ?? [],
+                                (
+                                    monster.action as unknown as
+                                        | RawEntryBlock[]
+                                        | undefined
+                                )?.flatMap(normalizeEntries) ?? [],
                             bonus_actions:
-                                monster.bonus?.flatMap(normalizeEntries) ?? [],
+                                (
+                                    monster.bonus as unknown as
+                                        | RawEntryBlock[]
+                                        | undefined
+                                )?.flatMap(normalizeEntries) ?? [],
                             reactions:
-                                monster.reaction?.flatMap(normalizeEntries) ??
-                                [],
+                                (
+                                    monster.reaction as unknown as
+                                        | RawEntryBlock[]
+                                        | undefined
+                                )?.flatMap(normalizeEntries) ?? [],
                             legendary_actions:
-                                monster.legendary?.flatMap(normalizeEntries) ??
-                                [],
+                                (
+                                    monster.legendary as unknown as
+                                        | RawEntryBlock[]
+                                        | undefined
+                                )?.flatMap(normalizeEntries) ?? [],
                             mythic_actions: [
                                 ...((monster.mythicHeader
                                     ? [
@@ -166,10 +190,13 @@ export async function build5eMonsterFromFile(file: File): Promise<Monster[]> {
                                               entries: monster.mythicHeader
                                           }
                                       ]
-                                    : []
-                                ).flatMap(normalizeEntries) ?? []),
-                                ...(monster.mythic?.flatMap(normalizeEntries) ??
-                                    [])
+                                    : []) as unknown as RawEntryBlock[]
+                                ).flatMap(normalizeEntries) ?? [],
+                                ...((
+                                    monster.mythic as unknown as
+                                        | RawEntryBlock[]
+                                        | undefined
+                                )?.flatMap(normalizeEntries) ?? [])
                             ],
                             spells: getSpells(monster),
                             spellsNotes: getSpellNotes(monster).join(" ")
@@ -230,14 +257,9 @@ function getCR(type: Creature5eTools["cr"]) {
 function getSpellNotes(monster: Creature5eTools) {
     let spellNotes: string[] = [];
 
-    for (const element in monster.spellcasting) {
+    for (const spellcasting of monster.spellcasting ?? []) {
         spellNotes.push(
-            stringify(
-                monster.spellcasting[element].footerEntries,
-                0,
-                ", ",
-                false
-            )
+            stringify(spellcasting.footerEntries ?? [], 0, ", ", false)
         );
     }
 
@@ -298,7 +320,7 @@ function getAc(acField: Creature5eTools["ac"] = []) {
     }
     if (!("ac" in item)) return null;
     if ("from" in item) {
-        return `${item.ac} (${parseString(item.from.join(", "))})`;
+        return `${item.ac} (${parseString(item.from?.join(", ") ?? "")})`;
     }
     return `${item.ac}`;
 }
@@ -339,7 +361,7 @@ function getSpellsFromFrequency(
     for (const freqString of Object.keys(spells)) {
         const spellArray = spells[freqString as keyof typeof spells];
         const frequency = Number(freqString.replace(/[^0-9]/, ""));
-        ret.push([frequency, getSpellStringFromArray(spellArray)]);
+        ret.push([frequency, getSpellStringFromArray(spellArray ?? [])]);
     }
     return ret;
 }
@@ -353,7 +375,10 @@ function extractSpellsBlocks(spellBlock: EntrySpellcasting): ExtractedSpells {
         try {
             for (const level in spellBlock.spells ?? {}) {
                 const block =
-                    spellBlock.spells[level as keyof typeof spellBlock.spells];
+                    spellBlock.spells?.[
+                        level as keyof typeof spellBlock.spells
+                    ];
+                if (!block) continue;
                 const { spells } = block;
                 let name: string = `${
                     spellMap[level as keyof typeof spellBlock.spells]
@@ -367,30 +392,26 @@ function extractSpellsBlocks(spellBlock: EntrySpellcasting): ExtractedSpells {
             throw new Error("There was an error parsing the spells.");
         }
     }
-    if ("will" in spellBlock) {
-        if (spellBlock.will.length > 0) {
-            try {
-                ret.push({
-                    "At will": getSpellStringFromArray(spellBlock.will)
-                });
-            } catch (e) {
-                throw new Error(
-                    "There was an error parsing the at-will spells."
-                );
-            }
+    if (spellBlock.will && spellBlock.will.length > 0) {
+        try {
+            ret.push({
+                "At will": getSpellStringFromArray(spellBlock.will)
+            });
+        } catch (e) {
+            throw new Error(
+                "There was an error parsing the at-will spells."
+            );
         }
     }
-    if ("ritual" in spellBlock) {
-        if (spellBlock.ritual.length > 0) {
-            try {
-                ret.push({
-                    Rituals: getSpellStringFromArray(spellBlock.ritual)
-                });
-            } catch (e) {
-                throw new Error(
-                    "There was an error parsing the ritual spells."
-                );
-            }
+    if (spellBlock.ritual && spellBlock.ritual.length > 0) {
+        try {
+            ret.push({
+                Rituals: getSpellStringFromArray(spellBlock.ritual)
+            });
+        } catch (e) {
+            throw new Error(
+                "There was an error parsing the ritual spells."
+            );
         }
     }
 
@@ -410,7 +431,9 @@ function extractSpellsBlocks(spellBlock: EntrySpellcasting): ExtractedSpells {
     };
     for (const frequency of frequencyCasting) {
         if (frequency in spellBlock) {
-            const entries = getSpellsFromFrequency(spellBlock[frequency]);
+            const entries = getSpellsFromFrequency(
+                spellBlock[frequency] ?? {}
+            );
             for (const entry of entries.sort((a, b) => b[0] - a[0])) {
                 ret.push({
                     [`${entry[0]}${frequencyMap[frequency]}`]: entry[1]
@@ -428,11 +451,11 @@ function getSpells(monster: Creature5eTools): ExtractedSpells {
     return monster.spellcasting.flatMap(extractSpellsBlocks);
 }
 function getMonsterAlignment(monster: Creature5eTools): string {
-    if (!monster.alignment) return null;
+    if (!monster.alignment) return "";
     return getAlignmentString(monster.alignment);
 }
 function getAlignmentString(alignment: Align[] | Align | Alignment): string {
-    if (!alignment) return null; // used in sidekicks
+    if (!alignment) return ""; // used in sidekicks
     let alignments: string[] = [];
     if (Array.isArray(alignment)) {
         let alignStr: string[] = [];
@@ -512,7 +535,7 @@ function getSpeedString(monster: Creature5eTools): string {
         stack.push(
             `${type === "walk" ? "" : `${type} `}${getVal(
                 speed[type] ?? 0
-            )} ft. ${getCond(speed[type])}`.trim()
+            )} ft. ${getCond(speed[type] ?? 0)}`.trim()
         );
 
         if (speed.alternate && speed.alternate[type])
@@ -582,6 +605,12 @@ type Entry =
           >;
       };
 type NormalizedEntry = { name: string; desc: string };
+/**
+ * The 5e.tools JSON schema types traits/actions/etc. with a much wider union of
+ * entry shapes than `normalizeEntries` actually needs to handle; callers cast to
+ * this narrower, structurally-equivalent shape before calling it.
+ */
+type RawEntryBlock = { name?: string; entries: Entry[] };
 
 /**
  * in some cases 5e.tool data json has not only strings, but objects inside, such as items, or dragon attacks
@@ -629,23 +658,25 @@ type NormalizedEntry = { name: string; desc: string };
  * 	]
  *```
  */
-function normalizeEntries(trait: {
-    name: string;
-    entries: Entry[];
-}): NormalizedEntry[] {
+function normalizeEntries(trait: RawEntryBlock): NormalizedEntry[] {
     const flattenedEntries = trait.entries.reduce(
         (acc, current) => {
             if (typeof current !== "string") {
-                const items = current.items?.map((item) => {
-                    if (typeof item == "string") {
-                        return { name: item, entries: [] };
-                    }
-                    if ("entry" in item) {
-                        return { name: item.name, entries: [item.entry] };
-                    }
+                const items = current.items?.map(
+                    (item): { name: string; entries: string[] } => {
+                        if (typeof item == "string") {
+                            return { name: item, entries: [] };
+                        }
+                        if ("entry" in item) {
+                            return {
+                                name: item.name,
+                                entries: [item.entry]
+                            };
+                        }
 
-                    return { name: item.name, entries: item.entries };
-                });
+                        return { name: item.name, entries: item.entries };
+                    }
+                );
                 return acc.concat(items ?? []);
             }
 
@@ -657,7 +688,7 @@ function normalizeEntries(trait: {
 
             return acc;
         },
-        [{ name: trait.name, entries: [] }]
+        [{ name: trait.name ?? "", entries: [] as string[] }]
     );
 
     return flattenedEntries.map(({ name, entries }) => {
@@ -1027,14 +1058,15 @@ function getSkillsaves(
     for (const name of Object.keys(skills) as Array<keyof typeof skills>) {
         if (name == "other") {
             const other = skills[name];
-            for (const entry of other) {
+            for (const entry of other ?? []) {
                 const oneOf = entry.oneOf;
                 if (!oneOf) continue;
                 const keys = (
                     Object.keys(oneOf) as Array<keyof typeof oneOf>
                 ).sort();
-                const firstKey = keys.shift(),
-                    first = oneOf[firstKey];
+                const firstKey = keys.shift();
+                if (firstKey === undefined) continue;
+                const first = oneOf[firstKey];
                 const [, v] = first?.match(/.*?(\d+)/) ?? [];
                 plus.push({
                     [`plus one of the following: ${

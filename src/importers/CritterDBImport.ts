@@ -1,4 +1,4 @@
-import type { Monster } from "types";
+import type { Monster } from "index";
 
 export async function buildMonsterFromCritterFile(
     file: File
@@ -19,7 +19,7 @@ export async function buildMonsterFromCritterFile(
                 for (let monster of monsters) {
                     try {
                         const importedMonster: Monster = {
-                            image: null,
+                            image: undefined,
                             name: monster.name,
                             source: "CritterDB",
                             type: monster.stats.race,
@@ -157,7 +157,8 @@ export async function buildMonsterFromCritterFile(
                                             )
                                         };
                                     }
-                                ) ?? []
+                                ) ?? [],
+                            bestiary: false
                         };
                         importedMonsters.push(importedMonster);
                     } catch (e) {

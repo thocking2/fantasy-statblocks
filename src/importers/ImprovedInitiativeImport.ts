@@ -1,4 +1,4 @@
-import type { Monster } from "types";
+import type { Monster } from "index";
 const SAVES: Record<
     string,
     | "strength"
@@ -163,7 +163,8 @@ export async function buildMonsterFromImprovedInitiativeFile(
                                         };
                                     }
                                 ) ?? [],
-                            image: null
+                            image: undefined,
+                            bestiary: false
                         };
                         monsterMap.push(importedMonster);
                     } catch (e) {
