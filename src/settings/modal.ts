@@ -7,7 +7,7 @@ import StatBlockRenderer from "src/view/statblock";
 import FantasyStatblockModal from "src/modal/modal";
 
 export class EditMonsterModal extends FantasyStatblockModal {
-    private _instance: EditMonsterApp;
+    private _instance!: EditMonsterApp;
     constructor(
         plugin: StatBlockPlugin,
         private monster: Partial<Monster> = {}

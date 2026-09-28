@@ -85,7 +85,7 @@ export function blockGenerator(type: string): StatblockItem {
                 type: "text",
                 id: nanoid(),
                 properties: [],
-                text: null
+                text: ""
             };
         }
         case "ifelse": {
@@ -99,7 +99,7 @@ export function blockGenerator(type: string): StatblockItem {
             return {
                 type: "collapse",
                 id: nanoid(),
-                heading: null,
+                heading: undefined,
                 hasRule: false,
                 conditioned: false,
                 nested: [blockGenerator("group")],
@@ -118,7 +118,7 @@ export function blockGenerator(type: string): StatblockItem {
             return {
                 type: "layout",
                 id: nanoid(),
-                layout: null
+                layout: ""
             };
         }
         case "action": {
@@ -128,6 +128,8 @@ export function blockGenerator(type: string): StatblockItem {
                 icon: "clapperboard"
             };
         }
+        default:
+            throw new Error(`Unknown block type: ${type}`);
     }
 }
 
@@ -138,9 +140,14 @@ export const generate = async (
         const addMenu = new Menu().setNoIcon();
         let gen: StatblockItem;
         TypeNames.forEach((type) => {
+            const [blockType, title] = type;
+            if (blockType === null) {
+                addMenu.addSeparator();
+                return;
+            }
             addMenu.addItem((item) => {
-                item.setTitle(type[1]).onClick(() => {
-                    gen = blockGenerator(type[0]);
+                item.setTitle(title).onClick(() => {
+                    gen = blockGenerator(blockType);
                     addMenu.unload();
                 });
             });

@@ -32,15 +32,15 @@ export default class DiceParsingModal extends FantasyStatblockModal {
         this.display();
     }
 
-    regex: EditorView;
-    parser: EditorView;
+    regex!: EditorView;
+    parser!: EditorView;
     async display() {
         this.contentEl.empty();
         new Setting(this.contentEl)
             .setName("Example")
             .setDesc("Add an example, for reference only.")
             .addText((t) => {
-                t.setValue(this.item.desc).onChange(
+                t.setValue(this.item.desc ?? "").onChange(
                     (v) => (this.item.desc = v)
                 );
             });
