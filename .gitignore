@@ -22,3 +22,6 @@ src/importers/*.json
 .env
 data.json
 dist
+
+# Claude Code agent worktree scratch state
+.claude/
