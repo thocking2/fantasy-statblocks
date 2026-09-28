@@ -6,7 +6,8 @@ import {
     PluginSettingTab,
     setIcon,
     Setting,
-    TFolder
+    TFolder,
+    type SettingDefinitionItem
 } from "obsidian";
 
 import type StatBlockPlugin from "src/main";
@@ -48,14 +49,24 @@ export default class StatblockSettingTab extends PluginSettingTab {
 
             containerEl.createEl("h2", { text: "Fantasy Statblocks Settings" });
 
+            new Setting(containerEl).setHeading().setName("General Settings");
             this.generateTopSettings(containerEl.createDiv());
+
+            new Setting(containerEl).setHeading().setName("Note Parsing");
             this.generateParseSettings(containerEl.createDiv());
+
+            new Setting(containerEl).setHeading().setName("Advanced Settings");
             this.generateAdvancedSettings(containerEl.createDiv());
 
+            new Setting(containerEl).setHeading().setName("Layouts");
             this.generateLayouts(containerEl.createDiv());
 
+            new Setting(containerEl)
+                .setHeading()
+                .setName("Import Homebrew Creatures");
             this.generateImports(containerEl.createDiv());
 
+            new Setting(containerEl).setHeading().setName("Bestiary");
             this.generateMonsters(containerEl.createDiv());
 
             const div = containerEl.createDiv("coffee");
@@ -73,9 +84,105 @@ export default class StatblockSettingTab extends PluginSettingTab {
             );
         }
     }
-    generateAdvancedSettings(container: HTMLDivElement) {
+
+    /**
+     * Declarative definitions used by Obsidian's settings search (1.13.0+).
+     * Each existing section is a SettingGroup so it gets a proper heading
+     * from the framework; the group's single item keeps the section's
+     * existing imperative rendering via `render`, with a name/description so
+     * the section can be found from the global search. `display()` above
+     * remains as a fallback for Obsidian < 1.13.0, drawing the same headings
+     * itself since it isn't going through SettingGroup.
+     */
+    getSettingDefinitions(): SettingDefinitionItem[] {
+        return [
+            {
+                type: "group",
+                heading: "General Settings",
+                items: [
+                    {
+                        name: "General Settings",
+                        desc: "Dice roller integration, wikilink rendering, and the 5e SRD bestiary.",
+                        render: (setting) => {
+                            this.generateTopSettings(setting.settingEl);
+                        }
+                    }
+                ]
+            },
+            {
+                type: "group",
+                heading: "Note Parsing",
+                items: [
+                    {
+                        name: "Note Parsing",
+                        desc: "Automatically parse creatures from frontmatter, bestiary folders, and debug messages.",
+                        aliases: ["frontmatter", "bestiary folder", "watcher"],
+                        render: (setting) => {
+                            this.generateParseSettings(setting.settingEl);
+                        }
+                    }
+                ]
+            },
+            {
+                type: "group",
+                heading: "Advanced Settings",
+                items: [
+                    {
+                        name: "Advanced Settings",
+                        desc: "Atomic data writes and other advanced plugin behavior.",
+                        render: (setting) => {
+                            this.generateAdvancedSettings(setting.settingEl);
+                        }
+                    }
+                ]
+            },
+            {
+                type: "group",
+                heading: "Layouts",
+                items: [
+                    {
+                        name: "Layouts",
+                        desc: "Create, edit, import, export, and manage statblock layouts.",
+                        aliases: ["layout editor", "default layout"],
+                        render: (setting) => {
+                            this.generateLayouts(setting.settingEl);
+                        }
+                    }
+                ]
+            },
+            {
+                type: "group",
+                heading: "Import Homebrew Creatures",
+                items: [
+                    {
+                        name: "Import Homebrew Creatures",
+                        desc: "Import creatures from DnDAppFile, Improved Initiative, CritterDB, 5e.tools, TetraCube, PF2eMonsterTools, Pathbuilder, or generic JSON.",
+                        aliases: ["importer"],
+                        render: (setting) => {
+                            this.generateImports(setting.settingEl);
+                        }
+                    }
+                ]
+            },
+            {
+                type: "group",
+                heading: "Bestiary",
+                items: [
+                    {
+                        name: "Bestiary",
+                        desc: "Add, edit, and remove saved creatures.",
+                        aliases: ["monsters", "creatures"],
+                        render: (setting) => {
+                            this.generateMonsters(setting.settingEl);
+                        }
+                    }
+                ]
+            }
+        ];
+    }
+
+    generateAdvancedSettings(container: HTMLElement) {
         container.empty();
-        new Setting(container).setHeading().setName("Advanced Settings");
 
         new Setting(container)
             .setName("Try to Save Data Atomically")
@@ -109,9 +216,8 @@ export default class StatblockSettingTab extends PluginSettingTab {
             );
     }
 
-    generateTopSettings(container: HTMLDivElement) {
+    generateTopSettings(container: HTMLElement) {
         container.empty();
-        new Setting(container).setHeading().setName("General Settings");
         /* new Setting(container)
             .setName("Enable Export to PNG")
             .setDesc(
@@ -242,12 +348,11 @@ export default class StatblockSettingTab extends PluginSettingTab {
                     })
             );
     }
-    generateParseSettings(containerEl: HTMLDivElement) {
+    generateParseSettings(containerEl: HTMLElement) {
         containerEl.empty();
         const additionalContainer = containerEl.createDiv(
             "statblock-additional-container"
         );
-        new Setting(additionalContainer).setHeading().setName("Note Parsing");
         new Setting(additionalContainer)
             .setName("Automatically Parse Frontmatter for Creatures")
             .setDesc(
@@ -345,9 +450,8 @@ export default class StatblockSettingTab extends PluginSettingTab {
             );
         }
     }
-    generateLayouts(containerEl: HTMLDivElement) {
+    generateLayouts(containerEl: HTMLElement) {
         containerEl.empty();
-        new Setting(containerEl).setHeading().setName("Layouts");
 
         const statblockCreatorContainer = containerEl.createDiv(
             "statblock-additional-container"
@@ -553,7 +657,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
     }
     buildCustomLayouts(
         layoutContainer: HTMLDivElement,
-        outerContainer: HTMLDivElement
+        outerContainer: HTMLElement
     ) {
         layoutContainer.empty();
 
@@ -752,11 +856,8 @@ export default class StatblockSettingTab extends PluginSettingTab {
         }
     }
 
-    generateImports(containerEl: HTMLDivElement) {
+    generateImports(containerEl: HTMLElement) {
         containerEl.empty();
-        new Setting(containerEl)
-            .setHeading()
-            .setName("Import Homebrew Creatures");
         const importSettingsContainer = containerEl.createDiv(
             "statblock-additional-container"
         );
@@ -1027,9 +1128,8 @@ export default class StatblockSettingTab extends PluginSettingTab {
             b.onClick(() => inputGeneric.click());
         });
     }
-    generateMonsters(containerEl: HTMLDivElement) {
+    generateMonsters(containerEl: HTMLElement) {
         containerEl.empty();
-        new Setting(containerEl).setHeading().setName("Bestiary");
         const additionalContainer = containerEl.createDiv(
             "statblock-additional-container statblock-monsters"
         );
