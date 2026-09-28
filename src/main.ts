@@ -1,11 +1,13 @@
 import {
     addIcon,
-    MarkdownPostProcessorContext,
     Notice,
-    ObsidianProtocolHandler,
     parseYaml,
     Plugin,
     WorkspaceLeaf
+} from "obsidian";
+import type {
+    MarkdownPostProcessorContext,
+    ObsidianProtocolHandler
 } from "obsidian";
 import domtoimage from "dom-to-image";
 
@@ -15,7 +17,7 @@ import type { Monster, StatblockParameters } from "../index";
 import StatblockSettingTab from "./settings/settings";
 import fastCopy from "fast-copy";
 
-import type { HomebrewCreature } from "obsidian-overload";
+import type { HomebrewCreature } from "src/types/HomebrewCreature";
 import type {
     DefaultLayout,
     Layout,
@@ -44,9 +46,9 @@ const DEFAULT_DATA: StatblockData = {
     export: true,
     showAdvanced: false,
     version: {
-        major: null,
-        minor: null,
-        patch: null
+        major: 0,
+        minor: 0,
+        patch: 0
     },
     paths: ["/"],
     autoParse: false,
@@ -61,7 +63,7 @@ const DEFAULT_DATA: StatblockData = {
 };
 
 export default class StatBlockPlugin extends Plugin {
-    settings: StatblockData;
+    settings!: StatblockData;
     manager = new LayoutManager();
     api: API = new API(this);
 
@@ -98,7 +100,7 @@ export default class StatBlockPlugin extends Plugin {
         const existing = this.app.workspace.getLeavesOfType(CREATURE_VIEW);
 
         if (!newPane && existing?.length) {
-            leaf = existing.shift();
+            leaf = existing.shift()!;
         } else {
             if (newPane && existing?.length) {
                 leaf = this.app.workspace.createLeafInParent(
@@ -106,7 +108,7 @@ export default class StatBlockPlugin extends Plugin {
                     existing[0].parent.children.length
                 );
             } else {
-                leaf = this.app.workspace.getRightLeaf(true);
+                leaf = this.app.workspace.getRightLeaf(true)!;
             }
             await leaf.setViewState({
                 type: CREATURE_VIEW
@@ -202,7 +204,9 @@ export default class StatBlockPlugin extends Plugin {
         this.addSettingTab(new StatblockSettingTab(this.app, this));
 
         (window["FantasyStatblocks"] = this.api) &&
-            this.register(() => delete window["FantasyStatblocks"]);
+            this.register(
+                () => delete (window as Partial<Window>).FantasyStatblocks
+            );
 
         this.registerMarkdownCodeBlockProcessor(
             "statblock",
@@ -222,7 +226,7 @@ export default class StatBlockPlugin extends Plugin {
                 showFormula: false,
                 showParens: false,
                 expectedValue: ExpectedValue.Average,
-                text: null
+                text: undefined
             });
         }
         this.registerEvent(
@@ -233,7 +237,7 @@ export default class StatBlockPlugin extends Plugin {
                     showFormula: false,
                     showParens: false,
                     expectedValue: ExpectedValue.Average,
-                    text: null
+                    text: undefined
                 });
             })
         );
@@ -271,7 +275,7 @@ export default class StatBlockPlugin extends Plugin {
             if (!(layout.id in this.settings.defaultLayouts)) continue;
             if (layout.version == null) continue;
             const existing = this.settings.defaultLayouts[layout.id];
-            if (existing.version >= layout.version) continue;
+            if ((existing.version ?? 0) >= layout.version) continue;
             if (existing.edited) {
                 existing.updatable = true;
                 continue;
@@ -389,12 +393,13 @@ export default class StatBlockPlugin extends Plugin {
     }
 
     exportAsPng(name: string, containerEl: Element) {
-        function filter(node: HTMLElement) {
+        function filter(node: Node) {
+            if (!(node instanceof HTMLElement)) return true;
             return !node.hasClass || !node.hasClass("clickable-icon");
         }
         const content =
             containerEl.querySelector<HTMLDivElement>(".statblock-content");
-        if (content) delete content.style["boxShadow"];
+        if (content) content.style.removeProperty("box-shadow");
         domtoimage
             .toPng(containerEl, {
                 filter: filter,
@@ -424,7 +429,7 @@ export default class StatBlockPlugin extends Plugin {
     }
 
     getLayoutOrDefault(monster: Monster): Layout {
-        return this.manager.getLayoutOrDefault(monster.layout);
+        return this.manager.getLayoutOrDefault(monster.layout ?? "");
     }
 
     async postprocessor(
@@ -453,9 +458,10 @@ export default class StatBlockPlugin extends Plugin {
         } catch (e) {
             console.error(`Obsidian Statblock Error:\n${e}`);
             let pre = createEl("pre");
+            const stack = e instanceof Error && e.stack ? e.stack : String(e);
             pre.setText(`\`\`\`statblock
 There was an error rendering the statblock:
-${e.stack
+${stack
     .split("\n")
     .filter((line: string) => !/^at/.test(line?.trim()))
     .join("\n")}
