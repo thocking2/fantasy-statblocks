@@ -8,7 +8,7 @@ import {
     Setting,
     TFolder,
     type SettingDefinition,
-    type SettingDefinitionItem,
+    type SettingDefinitionItem
 } from "obsidian";
 
 import type StatBlockPlugin from "src/main";
@@ -19,6 +19,7 @@ import { copy as fastCopy } from "fast-copy";
 import { ExpectedValue } from "@javalent/dice-roller";
 import { FolderInputSuggest } from "@javalent/utilities";
 import type { Monster } from "index";
+import { Bestiary } from "src/bestiary/bestiary";
 import Importer from "src/importers/importer";
 import { DefaultLayouts } from "src/layouts";
 import { Layout5e } from "src/layouts/basic 5e/basic5e";
@@ -44,7 +45,7 @@ const IMPORTERS: {
         input: "dndappfile",
         accept: ".xml",
         source: "appfile",
-        tooltip: "Import DnDAppFile Data",
+        tooltip: "Import DnDAppFile Data"
     },
     {
         name: "Import Improved Initiative Data",
@@ -52,7 +53,7 @@ const IMPORTERS: {
         input: "improvedinitiative",
         accept: ".json",
         source: "improved",
-        tooltip: "Import Improved Initiative Data",
+        tooltip: "Import Improved Initiative Data"
     },
     {
         name: "Import CritterDB Data",
@@ -60,7 +61,7 @@ const IMPORTERS: {
         input: "critterdb",
         accept: ".json",
         source: "critter",
-        tooltip: "Import CritterDB Data",
+        tooltip: "Import CritterDB Data"
     },
     {
         name: "Import 5e.tools Data",
@@ -68,7 +69,7 @@ const IMPORTERS: {
         input: "fivetools",
         accept: ".json",
         source: "5e",
-        tooltip: "Import 5e.tools Data",
+        tooltip: "Import 5e.tools Data"
     },
     {
         name: "Import TetraCube Data",
@@ -76,7 +77,7 @@ const IMPORTERS: {
         input: "tetra",
         accept: ".json, .monster",
         source: "tetra",
-        tooltip: "Import TetraCube Data",
+        tooltip: "Import TetraCube Data"
     },
     {
         name: "Import PF2eMonsterTools Data",
@@ -84,7 +85,7 @@ const IMPORTERS: {
         input: "PF2eMonsterTool",
         accept: ".json, .monster",
         source: "PF2eMonsterTool",
-        tooltip: "Import PF2EMonsterTools Data",
+        tooltip: "Import PF2EMonsterTools Data"
     },
     {
         name: "Import Pathbuilder Data",
@@ -92,13 +93,13 @@ const IMPORTERS: {
         input: "pathbuilder",
         accept: ".json",
         source: "pathbuilder",
-        tooltip: "Import Pathbuilder Data",
+        tooltip: "Import Pathbuilder Data"
     },
     {
         name: "Import Generic Data",
         desc: createFragment((e) => {
             e.createSpan({
-                text: "Import generic JSON files. JSON objects will be imported ",
+                text: "Import generic JSON files. JSON objects will be imported "
             });
             e.createEl("strong", { text: "as-is" });
             e.createSpan({ text: " and all objects must have the " });
@@ -108,8 +109,8 @@ const IMPORTERS: {
         input: "generic",
         accept: ".json, .monster",
         source: "generic",
-        tooltip: "Import Generic Data",
-    },
+        tooltip: "Import Generic Data"
+    }
 ];
 
 export default class StatblockSettingTab extends PluginSettingTab {
@@ -119,7 +120,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
     $UI?: Creatures;
     constructor(
         app: App,
-        private plugin: StatBlockPlugin,
+        private plugin: StatBlockPlugin
     ) {
         super(app, plugin);
         this.importer = new Importer(this.plugin);
@@ -144,37 +145,40 @@ export default class StatblockSettingTab extends PluginSettingTab {
             {
                 type: "group",
                 heading: "General Settings",
-                items: this.getGeneralDefinitions(),
+                items: this.getGeneralDefinitions()
             },
             {
                 type: "group",
                 heading: "Note Parsing",
-                items: this.getParseDefinitions(),
+                items: this.getParseDefinitions()
             },
             {
                 type: "group",
                 heading: "Advanced Settings",
-                items: this.getAdvancedDefinitions(),
+                items: this.getAdvancedDefinitions()
             },
             {
                 type: "group",
                 heading: "Layouts",
-                items: this.getLayoutDefinitions(),
+                items: this.getLayoutDefinitions()
             },
             {
                 type: "group",
                 heading: "Saved Layouts",
-                items: this.getLayoutListDefinitions(),
+                items: this.getLayoutListDefinitions()
             },
             {
                 type: "group",
                 heading: "Import Homebrew Creatures",
-                items: this.getImportDefinitions(),
+                items: this.getImportDefinitions()
             },
             {
-                type: "group",
-                heading: "Bestiary",
-                items: this.getBestiaryDefinitions(),
+                type: "page",
+                name: "Bestiary",
+                desc: "Add, browse, edit, and remove saved creatures.",
+                displayValue: () =>
+                    `${Bestiary.getBestiaryCreatures().length} creatures`,
+                items: this.getBestiaryDefinitions()
             },
             {
                 type: "group",
@@ -185,18 +189,18 @@ export default class StatblockSettingTab extends PluginSettingTab {
                         render: (setting) => {
                             setting.controlEl
                                 .createEl("a", {
-                                    href: "https://www.buymeacoffee.com/valentine195",
+                                    href: "https://www.buymeacoffee.com/valentine195"
                                 })
                                 .createEl("img", {
                                     attr: {
                                         src: "https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=valentine195&button_colour=e3e7ef&font_colour=262626&font_family=Inter&outline_colour=262626&coffee_colour=ff0000",
-                                        height: 30,
-                                    },
+                                        height: 30
+                                    }
                                 });
-                        },
-                    },
-                ],
-            },
+                        }
+                    }
+                ]
+            }
         ];
     }
 
@@ -209,7 +213,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
                     e.createSpan({ text: " to disable per-statblock." });
                 } else {
                     e.createSpan({
-                        text: "This setting is only usable with the Dice Roller plugin enabled.",
+                        text: "This setting is only usable with the Dice Roller plugin enabled."
                     });
                 }
             });
@@ -220,39 +224,39 @@ export default class StatblockSettingTab extends PluginSettingTab {
                 control: {
                     type: "toggle",
                     key: "useDice",
-                    disabled: () => !this.plugin.diceRollerInstalled,
-                },
+                    disabled: () => !this.plugin.diceRollerInstalled
+                }
             },
             {
                 name: "Render Dice Rolls",
                 desc: diceDesc(
                     "Roll graphical dice inside statblocks",
-                    "render",
+                    "render"
                 ),
                 control: {
                     type: "toggle",
                     key: "renderDice",
-                    disabled: () => !this.plugin.diceRollerInstalled,
-                },
+                    disabled: () => !this.plugin.diceRollerInstalled
+                }
             },
             {
                 name: "Try to Render Wikilinks",
                 desc: createFragment((e) => {
                     e.createSpan({
-                        text: "The plugin will attempt to detect wikilinks inside Statblocks.",
+                        text: "The plugin will attempt to detect wikilinks inside Statblocks."
                     });
                     e.createEl("br");
                     e.createEl("strong", {
-                        text: "Please note: these links will not be added to the graph.",
+                        text: "Please note: these links will not be added to the graph."
                     });
                 }),
-                control: { type: "toggle", key: "tryToRenderLinks" },
+                control: { type: "toggle", key: "tryToRenderLinks" }
             },
             {
                 name: "Enable 5e SRD",
                 desc: "Use the Dungeons & Dragons 5th Edition System Reference Document monsters.",
-                control: { type: "toggle", key: "enableSRD" },
-            },
+                control: { type: "toggle", key: "enableSRD" }
+            }
         ];
     }
 
@@ -263,21 +267,21 @@ export default class StatblockSettingTab extends PluginSettingTab {
                 name: "Automatically Parse Frontmatter for Creatures",
                 desc: createFragment((e) => {
                     e.createSpan({
-                        text: "The plugin will watch the vault for creatures defined in note frontmatter.",
+                        text: "The plugin will watch the vault for creatures defined in note frontmatter."
                     });
                     e.createEl("br");
                     e.createEl("br");
                     e.createSpan({
-                        text: `The "Parse Frontmatter for Creatures" command can also be used.`,
+                        text: `The "Parse Frontmatter for Creatures" command can also be used.`
                     });
                 }),
                 aliases: ["frontmatter", "watcher"],
-                control: { type: "toggle", key: "autoParse" },
+                control: { type: "toggle", key: "autoParse" }
             },
             {
                 name: "Enable Debug Messages",
                 desc: "Debug messages will be displayed by the file parser.",
-                control: { type: "toggle", key: "debug" },
+                control: { type: "toggle", key: "debug" }
             },
             {
                 name: "Bestiary Folder",
@@ -292,19 +296,19 @@ export default class StatblockSettingTab extends PluginSettingTab {
                                     (f) =>
                                         f instanceof TFolder &&
                                         !this.plugin.settings.paths.includes(
-                                            f.path,
-                                        ),
+                                            f.path
+                                        )
                                 );
                             text.setPlaceholder("/");
                             new FolderInputSuggest(this.app, text, [
-                                ...(folders as TFolder[]),
+                                ...(folders as TFolder[])
                             ]).onSelect(async ({ item }) => {
                                 path = normalizePath(item.path);
                                 text.setValue(item.path);
                             });
                             text.inputEl.onblur = () => {
                                 path = normalizePath(
-                                    text.inputEl.value?.trim() || "/",
+                                    text.inputEl.value?.trim() || "/"
                                 );
                             };
                         })
@@ -312,14 +316,14 @@ export default class StatblockSettingTab extends PluginSettingTab {
                             b.setIcon("plus-with-circle").onClick(async () => {
                                 if (!path?.length) return;
                                 this.plugin.settings.paths.push(
-                                    normalizePath(path),
+                                    normalizePath(path)
                                 );
                                 await this.plugin.saveSettings();
                                 await Watcher.reparseVault();
                                 this.refresh();
                             });
                         });
-                },
+                }
             },
             ...this.plugin.settings.paths.map(
                 (folder): SettingDefinition => ({
@@ -330,16 +334,16 @@ export default class StatblockSettingTab extends PluginSettingTab {
                             b.setIcon("trash").onClick(async () => {
                                 this.plugin.settings.paths =
                                     this.plugin.settings.paths.filter(
-                                        (p) => p != folder,
+                                        (p) => p != folder
                                     );
                                 await this.plugin.saveSettings();
                                 await Watcher.reparseVault();
                                 this.refresh();
-                            }),
+                            })
                         );
-                    },
-                }),
-            ),
+                    }
+                })
+            )
         ];
     }
 
@@ -349,24 +353,24 @@ export default class StatblockSettingTab extends PluginSettingTab {
                 name: "Try to Save Data Atomically",
                 desc: createFragment((e) => {
                     e.createSpan({
-                        text: "This will cause to plugin to save data to a temporary file before saving the actual data file in an attempt to prevent data loss.",
+                        text: "This will cause to plugin to save data to a temporary file before saving the actual data file in an attempt to prevent data loss."
                     });
                     e.createEl("br");
                     e.createSpan({
-                        text: "This can cause issues sometimes when using sync services.",
+                        text: "This can cause issues sometimes when using sync services."
                     });
                     e.createEl("br");
                     const warning = e.createDiv();
                     setIcon(warning.createDiv(), "warning");
                     warning.createSpan({
                         attr: {
-                            style: "color: var(--text-error)",
+                            style: "color: var(--text-error)"
                         },
-                        text: "This setting is currently disabled.",
+                        text: "This setting is currently disabled."
                     });
                 }),
-                control: { type: "toggle", key: "atomicWrite" },
-            },
+                control: { type: "toggle", key: "atomicWrite" }
+            }
         ];
     }
 
@@ -378,11 +382,11 @@ export default class StatblockSettingTab extends PluginSettingTab {
                 searchable: false,
                 desc: createFragment((el) => {
                     el.createSpan({
-                        text: "New statblock layouts can be created and managed here. A specific layout can be used for a creature using the ",
+                        text: "New statblock layouts can be created and managed here. A specific layout can be used for a creature using the "
                     });
                     el.createEl("code", { text: "layout" });
                     el.createSpan({ text: " parameter." });
-                }),
+                })
             },
             {
                 name: "Import From JSON",
@@ -396,9 +400,9 @@ export default class StatblockSettingTab extends PluginSettingTab {
                         onFiles: async (files) => {
                             await this.importLayouts(files);
                             this.refresh();
-                        },
+                        }
                     });
-                },
+                }
             },
             {
                 name: "Add New Layout",
@@ -410,7 +414,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
                             .setTooltip("Add New Layout")
                             .onClick(() => {
                                 const modal = new CreateStatblockModal(
-                                    this.plugin,
+                                    this.plugin
                                 );
                                 modal.onClose = async () => {
                                     if (!modal.saved) return;
@@ -421,9 +425,9 @@ export default class StatblockSettingTab extends PluginSettingTab {
                                     this.refresh();
                                 };
                                 modal.open();
-                            }),
+                            })
                     );
-                },
+                }
             },
             {
                 name: "Default Layout",
@@ -432,14 +436,14 @@ export default class StatblockSettingTab extends PluginSettingTab {
                     type: "dropdown",
                     key: "default",
                     options: Object.fromEntries(
-                        layouts.map(({ id, name }) => [id, name]),
-                    ),
-                },
+                        layouts.map(({ id, name }) => [id, name])
+                    )
+                }
             },
             {
                 name: "Show Advanced Options",
                 desc: "Show advanced options when editing layout blocks.",
-                control: { type: "toggle", key: "showAdvanced" },
+                control: { type: "toggle", key: "showAdvanced" }
             },
             {
                 name: "Restore Default Layouts",
@@ -451,7 +455,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
                     setting.addButton((b) => {
                         b.setIcon("rotate-ccw").onClick(async () => {
                             for (const layout of Object.values(
-                                this.plugin.settings.defaultLayouts,
+                                this.plugin.settings.defaultLayouts
                             )) {
                                 layout.removed = false;
                                 if (!layout.edited) {
@@ -464,8 +468,8 @@ export default class StatblockSettingTab extends PluginSettingTab {
                             this.refresh();
                         });
                     });
-                },
-            },
+                }
+            }
         ];
     }
 
@@ -483,7 +487,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
                             .onClick(() => {
                                 const modal = new CreateStatblockModal(
                                     this.plugin,
-                                    layout,
+                                    layout
                                 );
                                 modal.onClose = async () => {
                                     if (!modal.saved) return;
@@ -495,7 +499,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
                                     await this.plugin.saveSettings();
                                     this.plugin.manager.updateDefaultLayout(
                                         layout.id,
-                                        modal.layout,
+                                        modal.layout
                                     );
                                     this.refresh();
                                 };
@@ -509,7 +513,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
                                 .setTooltip("Reset to default")
                                 .onClick(async () => {
                                     const defLayout = DefaultLayouts.find(
-                                        ({ id }) => id == layout.id,
+                                        ({ id }) => id == layout.id
                                     )!;
                                     delete this.plugin.settings.defaultLayouts[
                                         layout.id
@@ -517,10 +521,10 @@ export default class StatblockSettingTab extends PluginSettingTab {
                                     await this.plugin.saveSettings();
                                     this.plugin.manager.updateDefaultLayout(
                                         layout.id,
-                                        defLayout,
+                                        defLayout
                                     );
                                     this.refresh();
-                                }),
+                                })
                         );
                     }
                     this.addLayoutButtons(setting, layout, async () => {
@@ -529,7 +533,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                         this.refresh();
                     });
-                },
+                }
             });
         }
         for (const layout of this.plugin.settings.layouts) {
@@ -543,13 +547,13 @@ export default class StatblockSettingTab extends PluginSettingTab {
                             .onClick(() => {
                                 const modal = new CreateStatblockModal(
                                     this.plugin,
-                                    layout,
+                                    layout
                                 );
                                 modal.onClose = async () => {
                                     if (!modal.saved) return;
                                     if (
                                         DefaultLayouts.find(
-                                            ({ id }) => id == layout.id,
+                                            ({ id }) => id == layout.id
                                         )
                                     ) {
                                         (modal.layout as DefaultLayout).edited =
@@ -557,15 +561,15 @@ export default class StatblockSettingTab extends PluginSettingTab {
                                     }
                                     this.plugin.settings.layouts.splice(
                                         this.plugin.settings.layouts.indexOf(
-                                            layout,
+                                            layout
                                         ),
                                         1,
-                                        modal.layout,
+                                        modal.layout
                                     );
                                     await this.plugin.saveSettings();
                                     this.plugin.manager.updateLayout(
                                         layout.id,
-                                        modal.layout,
+                                        modal.layout
                                     );
                                     this.refresh();
                                 };
@@ -575,13 +579,13 @@ export default class StatblockSettingTab extends PluginSettingTab {
                     this.addLayoutButtons(setting, layout, async () => {
                         this.plugin.settings.layouts =
                             this.plugin.settings.layouts.filter(
-                                (l) => l.id !== layout.id,
+                                (l) => l.id !== layout.id
                             );
                         await this.plugin.saveSettings();
                         this.plugin.manager.removeLayout(layout.id);
                         this.refresh();
                     });
-                },
+                }
             });
         }
         return defs;
@@ -591,7 +595,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
     private addLayoutButtons(
         setting: Setting,
         layout: Layout,
-        onDelete: () => Promise<void>,
+        onDelete: () => Promise<void>
     ) {
         setting
             .addExtraButton((b) => {
@@ -611,7 +615,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
                     .onClick(() => {
                         const link = createEl("a");
                         const file = new Blob([JSON.stringify(layout)], {
-                            type: "json",
+                            type: "json"
                         });
                         const url = URL.createObjectURL(file);
                         link.href = url;
@@ -635,15 +639,15 @@ export default class StatblockSettingTab extends PluginSettingTab {
             icon?: string;
             text?: string;
             tooltip?: string;
-        },
+        }
     ) {
         const input = createEl("input", {
             attr: {
                 type: "file",
                 name: opts.input,
                 accept: opts.accept,
-                multiple: true,
-            },
+                multiple: true
+            }
         });
         input.onchange = async () => {
             const { files } = input;
@@ -674,12 +678,12 @@ export default class StatblockSettingTab extends PluginSettingTab {
                 }
                 if (!layout.name) {
                     throw new Error(
-                        "Invalid layout imported: layout does not have a name",
+                        "Invalid layout imported: layout does not have a name"
                     );
                 }
                 if (!layout.blocks) {
                     throw new Error(
-                        "Invalid layout imported: no blocks defined in layout.",
+                        "Invalid layout imported: no blocks defined in layout."
                     );
                 }
                 if (!layout.diceParsing) {
@@ -708,7 +712,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
             {
                 name: "About Importing",
                 searchable: false,
-                desc: "Import creatures from creature files. Monsters are stored by name, so only the last creature by that name will be saved. This is destructive - any saved creature will be overwritten.",
+                desc: "Import creatures from creature files. Monsters are stored by name, so only the last creature by that name will be saved. This is destructive - any saved creature will be overwritten."
             },
             ...IMPORTERS.map(
                 (importer): SettingDefinition => ({
@@ -724,17 +728,17 @@ export default class StatblockSettingTab extends PluginSettingTab {
                             onFiles: async (files) => {
                                 const monsters = await this.importer.import(
                                     files,
-                                    importer.source as never,
+                                    importer.source as never
                                 );
                                 if (monsters && monsters.length) {
                                     await this.plugin.saveMonsters(monsters);
                                 }
                                 this.refresh();
-                            },
+                            }
                         });
-                    },
-                }),
-            ),
+                    }
+                })
+            )
         ];
     }
 
@@ -751,7 +755,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
                             modal.open();
                         });
                     });
-                },
+                }
             },
             {
                 name: "Saved Creatures",
@@ -769,15 +773,15 @@ export default class StatblockSettingTab extends PluginSettingTab {
                         props: {
                             plugin: this.plugin,
                             backgroundColor,
-                            paddingTop,
-                        },
+                            paddingTop
+                        }
                     });
                     return () => {
                         this.$UI?.$destroy();
                         this.$UI = undefined;
                     };
-                },
-            },
+                }
+            }
         ];
     }
 
@@ -801,7 +805,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
                 await this.plugin.saveSettings();
                 this.plugin.app.workspace.trigger(
                     "fantasy-statblocks:srd-change",
-                    value,
+                    value
                 );
                 return;
             case "renderDice":
@@ -811,7 +815,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
                         shouldRender: settings.renderDice,
                         showFormula: false,
                         showParens: false,
-                        expectedValue: ExpectedValue.Average,
+                        expectedValue: ExpectedValue.Average
                     });
                 }
                 break;
@@ -855,7 +859,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
         return {
             blocks: fastCopy(layout.blocks),
             name,
-            id: nanoid(),
+            id: nanoid()
         };
     }
     override hide() {
@@ -873,15 +877,15 @@ class CreateStatblockModal extends FantasyStatblockModal {
         layout: Layout = {
             name: "Layout",
             blocks: [],
-            id: nanoid(),
-        },
+            id: nanoid()
+        }
     ) {
         super(plugin);
         this.layout = fastCopy(layout);
         this.modalEl.addClasses([
             "mod-sidebar-layout",
             "mod-settings",
-            "statblock-layout-editor-modal",
+            "statblock-layout-editor-modal"
         ]);
         this.contentEl.addClass("vertical-tabs-container");
     }
@@ -896,8 +900,8 @@ class CreateStatblockModal extends FantasyStatblockModal {
             target: this.contentEl,
             props: {
                 layout: this.layout,
-                plugin: this.plugin,
-            },
+                plugin: this.plugin
+            }
         });
 
         this.creator.$on("saved", () => {
@@ -914,14 +918,14 @@ class ConfirmModal extends FantasyStatblockModal {
     saved: boolean = false;
     constructor(
         public filtered: number,
-        plugin: StatBlockPlugin,
+        plugin: StatBlockPlugin
     ) {
         super(plugin);
     }
     onOpen() {
         this.titleEl.setText("Are you sure?");
         this.contentEl.createEl("p", {
-            text: `This will delete ${this.filtered} creatures. This cannot be undone.`,
+            text: `This will delete ${this.filtered} creatures. This cannot be undone.`
         });
         new Setting(this.contentEl)
             .setClass("no-border-top")
@@ -936,7 +940,7 @@ class ConfirmModal extends FantasyStatblockModal {
             .addExtraButton((b) =>
                 b.setIcon("cross").onClick(() => {
                     this.close();
-                }),
+                })
             );
     }
 }
@@ -962,18 +966,18 @@ class ConfirmImport extends FantasyStatblockModal {
         this.contentEl.empty();
         this.contentEl.addClass("confirm-modal");
         this.contentEl.createEl("p", {
-            text: "This Layout includes JavaScript blocks. JavaScript blocks can execute code in your vault, which could cause loss or corruption of data.",
+            text: "This Layout includes JavaScript blocks. JavaScript blocks can execute code in your vault, which could cause loss or corruption of data."
         });
         this.contentEl.createEl("p", {
-            text: "Are you sure you want to import this layout?",
+            text: "Are you sure you want to import this layout?"
         });
 
         const buttonContainerEl = this.contentEl.createDiv(
-            "confirm-buttons-container",
+            "confirm-buttons-container"
         );
         buttonContainerEl.createEl("a").createEl("small", {
             cls: "dont-ask",
-            text: "Import and don't ask again",
+            text: "Import and don't ask again"
         }).onclick = async () => {
             this.confirmed = true;
             this.plugin.settings.alwaysImport = true;
@@ -990,7 +994,7 @@ class ConfirmImport extends FantasyStatblockModal {
             });
         buttonEl.createEl("a").createEl("small", {
             cls: "dont-ask",
-            text: "Cancel",
+            text: "Cancel"
         }).onclick = () => {
             this.close();
         };
