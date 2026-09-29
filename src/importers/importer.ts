@@ -7,7 +7,7 @@ import { nanoid } from "src/util/util";
 import FantasyStatblockModal from "src/modal/modal";
 
 class SourcePromptModal extends FantasyStatblockModal {
-    source?: string;
+    source: string = "";
     saved: boolean = false;
     display() {
         this.titleEl.createSpan({ text: "Set Sources" });
@@ -48,14 +48,12 @@ class SourcePromptModal extends FantasyStatblockModal {
     }
 }
 
-const getSourceFromPrompt = async (
-    app: StatBlockPlugin
-): Promise<string | undefined> => {
+const getSourceFromPrompt = async (app: StatBlockPlugin): Promise<string | null> => {
     return new Promise((resolve) => {
         const modal = new SourcePromptModal(app);
         modal.onClose = () => {
-            if (!modal.saved) resolve(undefined);
-            resolve(modal.source);
+            if (!modal.saved) resolve(null);
+            else resolve(modal.source);
         };
         modal.open();
     });
@@ -82,13 +80,13 @@ export default class Importer {
                         (monster) =>
                             monster.source == "Unknown" || !monster.source
                     );
-                    let source: string | undefined;
+                    let source: string | null;
                     if (
                         sourceless.length &&
                         (source = await getSourceFromPrompt(this.plugin))
                     ) {
                         sourceless.forEach(
-                            (monster) => (monster.source = source)
+                            (monster) => (monster.source = source!)
                         );
                     }
                 }

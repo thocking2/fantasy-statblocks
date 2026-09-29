@@ -97,7 +97,7 @@ export async function buildMonsterFromPathbuilderFile(file: File): Promise<Monst
                     languages: pc.languages.join(", "),
                     cr: pc.level,
                     bestiary: false,
-                    // This layout displays ability modifiers via `abilityMods` instead of raw stats.
+                    // no ability scores are provided; preserve previous behavior
                     stats: null as unknown as Monster["stats"]
                 };
                 resolve([monster]);

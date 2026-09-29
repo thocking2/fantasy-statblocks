@@ -20,6 +20,7 @@ export async function buildMonsterFromCritterFile(
                     try {
                         const importedMonster: Monster = {
                             image: undefined,
+                            bestiary: true,
                             name: monster.name,
                             source: "CritterDB",
                             type: monster.stats.race,
@@ -157,8 +158,7 @@ export async function buildMonsterFromCritterFile(
                                             )
                                         };
                                     }
-                                ) ?? [],
-                            bestiary: false
+                                ) ?? []
                         };
                         importedMonsters.push(importedMonster);
                     } catch (e) {

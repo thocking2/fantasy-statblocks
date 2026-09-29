@@ -32,6 +32,7 @@ export async function buildMonsterFromImprovedInitiativeFile(
                     try {
                         const monster = json[key];
                         const importedMonster: Monster = {
+                            bestiary: true,
                             name: monster.Name,
                             source: monster.Source?.trim().length
                                 ? monster.Source?.trim()
@@ -163,8 +164,7 @@ export async function buildMonsterFromImprovedInitiativeFile(
                                         };
                                     }
                                 ) ?? [],
-                            image: undefined,
-                            bestiary: false
+                            image: undefined
                         };
                         monsterMap.push(importedMonster);
                     } catch (e) {
