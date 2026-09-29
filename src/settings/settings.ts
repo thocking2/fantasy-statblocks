@@ -3,6 +3,7 @@ import {
     ButtonComponent,
     normalizePath,
     Notice,
+    Platform,
     PluginSettingTab,
     setIcon,
     Setting,
@@ -1175,12 +1176,15 @@ class CreateStatblockModal extends FantasyStatblockModal {
     ) {
         super(plugin);
         this.layout = fastCopy(layout);
-        this.modalEl.addClasses([
-            "mod-sidebar-layout",
-            "mod-settings",
-            "statblock-layout-editor-modal"
-        ]);
-        this.contentEl.addClass("vertical-tabs-container");
+        this.modalEl.addClass("statblock-layout-editor-modal");
+        if (Platform.isMobile) {
+            /** The sidebar/settings modal styles assume the desktop two-pane
+             * layout and render blank with the single-column mobile editor. */
+            this.modalEl.addClass("is-mobile-editor");
+        } else {
+            this.modalEl.addClasses(["mod-sidebar-layout", "mod-settings"]);
+            this.contentEl.addClass("vertical-tabs-container");
+        }
     }
 
     onOpen() {
