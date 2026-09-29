@@ -180,27 +180,6 @@ export default class StatblockSettingTab extends PluginSettingTab {
                 displayValue: () =>
                     `${Bestiary.getBestiaryCreatures().length} creatures`,
                 items: this.getBestiaryDefinitions()
-            },
-            {
-                type: "group",
-                items: [
-                    {
-                        name: "Support development",
-                        searchable: false,
-                        render: (setting) => {
-                            setting.controlEl
-                                .createEl("a", {
-                                    href: "https://www.buymeacoffee.com/valentine195"
-                                })
-                                .createEl("img", {
-                                    attr: {
-                                        src: "https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=valentine195&button_colour=e3e7ef&font_colour=262626&font_family=Inter&outline_colour=262626&coffee_colour=ff0000",
-                                        height: 30
-                                    }
-                                });
-                        }
-                    }
-                ]
             }
         ];
     }

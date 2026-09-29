@@ -99,15 +99,6 @@
     > *:first-child {
     margin: 0 6px;
 }
-.statblock-settings .coffee {
-    width: 60%;
-    color: var(--text-faint);
-    margin: 1rem auto;
-    text-align: center;
-}
-.statblock-settings .coffee img {
-    height: 30px;
-}
 details.statblock-nested-settings > summary {
     outline: none;
     display: flex;
