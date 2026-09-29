@@ -192,6 +192,9 @@ class Parser {
     }
 
     private processMonster(monster: Monster, file: FileDetails) {
+        if (!monster.name) {
+            monster.name = file.basename;
+        }
         if (monster.actions) {
             monster.actions = transformTraits([], monster.actions);
         }
