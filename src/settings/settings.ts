@@ -9,7 +9,8 @@ import {
     Setting,
     TFolder,
     type SettingDefinition,
-    type SettingDefinitionItem
+    type SettingDefinitionItem,
+    type SettingGroupItem
 } from "obsidian";
 
 import type StatBlockPlugin from "src/main";
@@ -163,11 +164,6 @@ export default class StatblockSettingTab extends PluginSettingTab {
                 type: "group",
                 heading: "Layouts",
                 items: this.getLayoutDefinitions()
-            },
-            {
-                type: "group",
-                heading: "Saved Layouts",
-                items: this.getLayoutListDefinitions()
             },
             {
                 type: "group",
@@ -355,7 +351,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
         ];
     }
 
-    getLayoutDefinitions(): SettingDefinition[] {
+    getLayoutDefinitions(): SettingGroupItem[] {
         const layouts = this.plugin.manager.getAllLayouts();
         return [
             {
@@ -450,8 +446,24 @@ export default class StatblockSettingTab extends PluginSettingTab {
                         });
                     });
                 }
+            },
+            {
+                type: "page",
+                name: "Saved Layouts",
+                desc: "Edit, copy, export, and delete saved layouts.",
+                displayValue: () => `${this.getLayoutCount()} layouts`,
+                items: this.getLayoutListDefinitions()
             }
         ];
+    }
+
+    private getLayoutCount() {
+        return (
+            this.plugin.manager
+                .getAllDefaultLayouts()
+                .filter((l) => !l.removed).length +
+            this.plugin.settings.layouts.length
+        );
     }
 
     getLayoutListDefinitions(): SettingDefinition[] {
