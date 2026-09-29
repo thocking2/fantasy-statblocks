@@ -94,7 +94,7 @@
         </div>
         {#each SettingsSections as SECTION}
             <div class="mobile-section {SECTION.toLowerCase()}s">
-                <h3 class="section-heading">{SECTION}</h3>
+                <h2 class="section-heading">{SECTION}</h2>
                 {#if SECTION === "General"}
                     <Blocks />
                 {:else if SECTION === "Appearance"}
@@ -118,7 +118,7 @@
         gap: 0.25rem;
     }
     .section-heading {
-        margin: var(--size-4-4) 0 var(--size-4-2);
+        margin: var(--size-4-8) 0 var(--size-4-2);
         padding-bottom: var(--size-4-1);
         border-bottom: 1px solid var(--background-modifier-border);
     }
