@@ -9,7 +9,8 @@ import {
     Setting,
     TFolder,
     type SettingDefinition,
-    type SettingDefinitionItem
+    type SettingDefinitionItem,
+    type SettingGroupItem
 } from "obsidian";
 
 import type StatBlockPlugin from "src/main";
@@ -350,7 +351,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
         ];
     }
 
-    getLayoutDefinitions(): SettingDefinition[] {
+    getLayoutDefinitions(): SettingGroupItem[] {
         const layouts = this.plugin.manager.getAllLayouts();
         return [
             {
