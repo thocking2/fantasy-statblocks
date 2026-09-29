@@ -69,7 +69,7 @@ export async function build5eMonsterFromFile(file: File): Promise<Monster[]> {
         reader.onload = async (event: any) => {
             try {
                 let json = JSON.parse(event.target.result);
-                let monsters: Creature5eTools[];
+                let monsters: Creature5eTools[] = [];
                 if ("monster" in json) {
                     monsters = json.monster;
                 } else if (Array.isArray(json)) {
@@ -78,36 +78,37 @@ export async function build5eMonsterFromFile(file: File): Promise<Monster[]> {
                     monsters = [json];
                 } else {
                     reject("Invalid monster JSON provided.");
+                    return;
                 }
                 const imported: Monster[] = [];
                 for (const monster of monsters) {
                     try {
                         const importedMonster: Monster = {
-                            image: null,
+                            image: undefined,
                             bestiary: true,
-                            name: monster.name,
+                            name: monster.name ?? "",
                             source: getSource(monster),
-                            type: getType(monster.type),
-                            subtype: getSubType(monster.type),
-                            size: SIZE_ABV_TO_FULL[monster.size?.[0]],
-                            alignment: getMonsterAlignment(monster),
+                            type: getType(monster.type) ?? "",
+                            subtype: getSubType(monster.type) ?? "",
+                            size: SIZE_ABV_TO_FULL[monster.size?.[0] as Size] ?? "",
+                            alignment: getMonsterAlignment(monster) ?? "",
                             hp:
                                 monster.hp && "average" in monster.hp
                                     ? monster.hp?.average
-                                    : null,
+                                    : 0,
                             hit_dice:
                                 monster.hp && "formula" in monster.hp
                                     ? monster.hp?.formula
                                     : "",
-                            ac: getAc(monster.ac),
+                            ac: getAc(monster.ac) ?? "",
                             speed: getSpeedString(monster),
                             stats: [
-                                monster.str,
-                                monster.dex,
-                                monster.con,
-                                monster.int,
-                                monster.wis,
-                                monster.cha
+                                monster.str ?? 0,
+                                monster.dex ?? 0,
+                                monster.con ?? 0,
+                                monster.int ?? 0,
+                                monster.wis ?? 0,
+                                monster.cha ?? 0
                             ],
                             damage_immunities: parseString(
                                 parseImmune(monster.immune)
@@ -136,16 +137,16 @@ export async function build5eMonsterFromFile(file: File): Promise<Monster[]> {
                                         return { [abilityMap[thr[0]]]: v };
                                     }
                                 )
-                                .filter((v) => v),
+                                .filter((v) => v) as Monster["saves"],
                             skillsaves: getSkillsaves(monster),
                             senses: getSenses(monster),
                             languages: stringify(
-                                monster.languages,
+                                monster.languages ?? [],
                                 0,
                                 ", ",
                                 false
                             ),
-                            cr: getCR(monster.cr),
+                            cr: getCR(monster.cr) ?? "",
                             traits:
                                 monster.trait?.flatMap(normalizeEntries) ?? [],
                             actions:
@@ -233,7 +234,8 @@ function getSpellNotes(monster: Creature5eTools) {
     for (const element in monster.spellcasting) {
         spellNotes.push(
             stringify(
-                monster.spellcasting[element].footerEntries,
+                monster.spellcasting[element as unknown as number]
+                    .footerEntries ?? [],
                 0,
                 ", ",
                 false
@@ -245,7 +247,7 @@ function getSpellNotes(monster: Creature5eTools) {
 }
 
 function parseImmune(
-    immune:
+    immune?:
         | DamageImmunityArray
         | DamageResistArray
         | DamageVulnerabilityArray
@@ -298,7 +300,7 @@ function getAc(acField: Creature5eTools["ac"] = []) {
     }
     if (!("ac" in item)) return null;
     if ("from" in item) {
-        return `${item.ac} (${parseString(item.from.join(", "))})`;
+        return `${item.ac} (${parseString((item.from ?? []).join(", "))})`;
     }
     return `${item.ac}`;
 }
@@ -339,7 +341,7 @@ function getSpellsFromFrequency(
     for (const freqString of Object.keys(spells)) {
         const spellArray = spells[freqString as keyof typeof spells];
         const frequency = Number(freqString.replace(/[^0-9]/, ""));
-        ret.push([frequency, getSpellStringFromArray(spellArray)]);
+        ret.push([frequency, getSpellStringFromArray(spellArray ?? [])]);
     }
     return ret;
 }
@@ -352,11 +354,12 @@ function extractSpellsBlocks(spellBlock: EntrySpellcasting): ExtractedSpells {
     if ("spells" in spellBlock) {
         try {
             for (const level in spellBlock.spells ?? {}) {
-                const block =
-                    spellBlock.spells[level as keyof typeof spellBlock.spells];
+                const block = spellBlock.spells![
+                    level as keyof typeof spellBlock.spells
+                ] as { slots?: number; spells: _ArrayOfSpell };
                 const { spells } = block;
                 let name: string = `${
-                    spellMap[level as keyof typeof spellBlock.spells]
+                    spellMap[level as unknown as keyof typeof spellMap]
                 }`;
                 name += "slots" in block ? ` (${block.slots} slots)` : "";
 
@@ -368,10 +371,10 @@ function extractSpellsBlocks(spellBlock: EntrySpellcasting): ExtractedSpells {
         }
     }
     if ("will" in spellBlock) {
-        if (spellBlock.will.length > 0) {
+        if (spellBlock.will!.length > 0) {
             try {
                 ret.push({
-                    "At will": getSpellStringFromArray(spellBlock.will)
+                    "At will": getSpellStringFromArray(spellBlock.will!)
                 });
             } catch (e) {
                 throw new Error(
@@ -381,10 +384,10 @@ function extractSpellsBlocks(spellBlock: EntrySpellcasting): ExtractedSpells {
         }
     }
     if ("ritual" in spellBlock) {
-        if (spellBlock.ritual.length > 0) {
+        if (spellBlock.ritual!.length > 0) {
             try {
                 ret.push({
-                    Rituals: getSpellStringFromArray(spellBlock.ritual)
+                    Rituals: getSpellStringFromArray(spellBlock.ritual!)
                 });
             } catch (e) {
                 throw new Error(
@@ -410,7 +413,7 @@ function extractSpellsBlocks(spellBlock: EntrySpellcasting): ExtractedSpells {
     };
     for (const frequency of frequencyCasting) {
         if (frequency in spellBlock) {
-            const entries = getSpellsFromFrequency(spellBlock[frequency]);
+            const entries = getSpellsFromFrequency(spellBlock[frequency]!);
             for (const entry of entries.sort((a, b) => b[0] - a[0])) {
                 ret.push({
                     [`${entry[0]}${frequencyMap[frequency]}`]: entry[1]
@@ -427,20 +430,22 @@ function getSpells(monster: Creature5eTools): ExtractedSpells {
 
     return monster.spellcasting.flatMap(extractSpellsBlocks);
 }
-function getMonsterAlignment(monster: Creature5eTools): string {
+function getMonsterAlignment(monster: Creature5eTools): string | null {
     if (!monster.alignment) return null;
     return getAlignmentString(monster.alignment);
 }
-function getAlignmentString(alignment: Align[] | Align | Alignment): string {
+function getAlignmentString(
+    alignment: Align[] | Align | Alignment
+): string | null {
     if (!alignment) return null; // used in sidekicks
     let alignments: string[] = [];
     if (Array.isArray(alignment)) {
         let alignStr: string[] = [];
         for (const align of alignment) {
             if (typeof align === "string") {
-                alignStr.push(getAlignmentString(align));
+                alignStr.push(getAlignmentString(align) ?? "");
             } else {
-                alignments.push(getAlignmentString(align));
+                alignments.push(getAlignmentString(align) ?? "");
             }
         }
         if (alignStr.length > 0) {
@@ -489,13 +494,14 @@ function getSpeedString(monster: Creature5eTools): string {
     if (!speed) return "\u2014";
     if (typeof speed == "number") return `${speed}`;
 
-    function getVal(speedProp: _SpeedVal) {
+    function getVal(speedProp: _SpeedVal | undefined) {
+        if (speedProp == undefined) return 0;
         if (typeof speedProp == "number") return speedProp;
         return speedProp.number != null ? speedProp.number : speedProp;
     }
 
-    function getCond(speedProp: _SpeedVal) {
-        if (typeof speedProp == "number") return "";
+    function getCond(speedProp: _SpeedVal | undefined) {
+        if (speedProp == undefined || typeof speedProp == "number") return "";
         return speedProp?.condition ?? "";
     }
 
@@ -508,7 +514,7 @@ function getSpeedString(monster: Creature5eTools): string {
             !(type in (speed.alternate ?? {}))
         )
             continue;
-        const typeStack = [];
+        const typeStack: string[] = [];
         stack.push(
             `${type === "walk" ? "" : `${type} `}${getVal(
                 speed[type] ?? 0
@@ -630,10 +636,12 @@ type NormalizedEntry = { name: string; desc: string };
  *```
  */
 function normalizeEntries(trait: {
-    name: string;
-    entries: Entry[];
+    name?: string;
+    entries: any[];
 }): NormalizedEntry[] {
-    const flattenedEntries = trait.entries.reduce(
+    const flattenedEntries = (trait.entries as Entry[]).reduce<
+        { name: string; entries: Entry[] }[]
+    >(
         (acc, current) => {
             if (typeof current !== "string") {
                 const items = current.items?.map((item) => {
@@ -657,7 +665,7 @@ function normalizeEntries(trait: {
 
             return acc;
         },
-        [{ name: trait.name, entries: [] }]
+        [{ name: trait.name ?? "", entries: [] }]
     );
 
     return flattenedEntries.map(({ name, entries }) => {
@@ -1026,15 +1034,16 @@ function getSkillsaves(
         plus = [];
     for (const name of Object.keys(skills) as Array<keyof typeof skills>) {
         if (name == "other") {
-            const other = skills[name];
+            const other = skills[name] ?? [];
             for (const entry of other) {
                 const oneOf = entry.oneOf;
                 if (!oneOf) continue;
                 const keys = (
                     Object.keys(oneOf) as Array<keyof typeof oneOf>
                 ).sort();
-                const firstKey = keys.shift(),
-                    first = oneOf[firstKey];
+                const firstKey = keys.shift();
+                if (!firstKey) continue;
+                const first = oneOf[firstKey];
                 const [, v] = first?.match(/.*?(\d+)/) ?? [];
                 plus.push({
                     [`plus one of the following: ${

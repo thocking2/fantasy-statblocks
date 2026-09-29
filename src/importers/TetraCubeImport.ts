@@ -1,4 +1,4 @@
-import type { Monster, Spell, Trait } from "types";
+import type { Monster, Spell, Trait } from "index";
 const CR: { [key: string]: any } = {
     "0": {
         cr: "0",
@@ -239,14 +239,15 @@ class TetraMonster {
     static parse(monster: any) {
         const importer = new TetraMonster(monster);
         const importedMonster: Monster = {
-            image: null,
+            image: undefined,
+            bestiary: true,
             name: monster.name,
             source: "TetraCube",
             type: monster.type,
             subtype: monster.tag,
             size: monster.size,
             alignment: monster.alignment,
-            hp: importer.getHP(monster)?.hp,
+            hp: importer.getHP(monster)?.hp ?? 0,
             hit_dice: importer.getHP(monster)?.dice,
             ac: (monster.ac ?? [])[0]?.ac ?? "",
             speed: importer.getSpeedString(monster),
@@ -271,21 +272,21 @@ class TetraMonster {
             actions: importer.getTraits(monster.actions),
             bonus_actions: importer.getTraits(monster.bonusActions),
             reactions: importer.getTraits(monster.reactions),
-            legendary_description: (monster.isLegendary ?? false) ? monster.legendariesDescription : null,
-            legendary_actions: (monster.isLegendary ?? false) ? importer.getTraits(monster.legendaries) : null,
-            mythic_description: (monster.isMythic ?? false) ? monster.mythicDescription : null,
-            mythic_actions: (monster.isMythic ?? false) ? importer.getTraits(monster.mythics) : null,
-            lair_description: (monster.isLair ?? false) ? monster.lairDescription : null,
-            lair_actions: (monster.isLair ?? false) ? importer.getTraits(monster.lairs) : null,
-            lair_description_end: (monster.isLair ?? false) ? monster.lairDescriptionEnd : null,
-            regional_description: (monster.isRegional ?? false) ? monster.regionalDescription : null,
-            regional_actions: (monster.isRegional ?? false) ? importer.getTraits(monster.regionals) : null,
-            regional_description_end: (monster.isRegional ?? false) ? monster.regionalDescriptionEnd : null,
+            legendary_description: (monster.isLegendary ?? false) ? monster.legendariesDescription : undefined,
+            legendary_actions: (monster.isLegendary ?? false) ? importer.getTraits(monster.legendaries) : undefined,
+            mythic_description: (monster.isMythic ?? false) ? monster.mythicDescription : undefined,
+            mythic_actions: (monster.isMythic ?? false) ? importer.getTraits(monster.mythics) : undefined,
+            lair_description: (monster.isLair ?? false) ? monster.lairDescription : undefined,
+            lair_actions: (monster.isLair ?? false) ? importer.getTraits(monster.lairs) : undefined,
+            lair_description_end: (monster.isLair ?? false) ? monster.lairDescriptionEnd : undefined,
+            regional_description: (monster.isRegional ?? false) ? monster.regionalDescription : undefined,
+            regional_actions: (monster.isRegional ?? false) ? importer.getTraits(monster.regionals) : undefined,
+            regional_description_end: (monster.isRegional ?? false) ? monster.regionalDescriptionEnd : undefined,
             spells: importer.getSpells(monster.abilities)
         };
         return importedMonster;
     }
-    getHP(monster: any): { hp?: number; dice?: string } {
+    getHP(monster: any): { hp?: number; dice?: string } | undefined {
         if (
             monster.customHP ||
             (monster.hitDice && /(\d+) \((.+)\)/.test(monster.hpText))
@@ -474,7 +475,7 @@ class TetraMonster {
     }
 
     getTraits(abilities: any): Trait[] {
-        if (!abilities || !abilities.length) return;
+        if (!abilities || !abilities.length) return [];
         const traits = abilities
             .filter((ability: Trait) => ability.name != "Spellcasting")
             .map((ability: Trait) => {
@@ -487,12 +488,12 @@ class TetraMonster {
     }
 
     getSpells(monster: any): Spell[] {
-        if (!monster.abilities || !monster.abilities.length) return;
+        if (!monster.abilities || !monster.abilities.length) return [];
         let { desc } =
             monster.abilities.find(
                 (ability: Trait) => ability.name == "Spellcasting"
             ) ?? {};
-        if (!desc) return;
+        if (!desc) return [];
         const spells = this.transformString(desc)
             .trim()
             .split("\n")
@@ -560,6 +561,7 @@ class TetraMonster {
         if ("conditions" in monster && Array.isArray(monster.conditions)) {
             return monster.conditions.map((c: any) => c.name).join(", ");
         }
+        return "";
     }
 }
 
@@ -604,7 +606,7 @@ export async function buildMonsterFromTetraCube(
         reader.readAsText(file);
     });
 }
-/* function getHP(monster: any): { hp?: number; dice?: string } {
+/* function getHP(monster: any): { hp?: number; dice?: string } | undefined {
     if (
         monster.customHP ||
         (monster.hitDice && /(\d+) \((.+)\)/.test(monster.hpText))
@@ -762,7 +764,7 @@ function getSpells(monster: any): Spell[] {
         monster.abilities.find(
             (ability: Trait) => ability.name == "Spellcasting"
         ) ?? {};
-    if (!desc) return;
+    if (!desc) return [];
     const [, save] = desc.match(/\[(\w{3}) SAVE\]/) ?? [];
     if (save) {
         const prof = getProf(monster);
