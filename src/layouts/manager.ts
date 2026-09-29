@@ -80,12 +80,9 @@ export default class LayoutManager {
             attr: { id }
         });
         const rules = this.getSheetRules(layout);
-        const sheet = stylesheet.sheet;
-        if (sheet) {
-            for (const rule of rules) {
-                sheet.insertRule(rule, sheet.cssRules.length);
-            }
-        }
+        // Write rules as text (not via insertRule) so the <style> element keeps
+        // its content when cloned, e.g. by Obsidian's PDF export.
+        stylesheet.textContent = rules.join("\n");
         return stylesheet;
     }
     #transformProp(prop: string): string {
