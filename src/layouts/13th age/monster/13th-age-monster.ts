@@ -1,4 +1,4 @@
-import type {DefaultLayout} from "../../layout.types";
+import type {DefaultLayout, Layout} from "../../layout.types";
 
 export const Layout13thAgeMonster: DefaultLayout = {
     blocks: [
@@ -189,5 +189,15 @@ export const Layout13thAgeMonster: DefaultLayout = {
         }
     ],
     name: "Basic 13th Age Monster Layout",
-    id: "basic-13th-age-monster-block"
+    id: "basic-13th-age-monster-block",
+    // Mirrors the overrides in xCSS/13th-age-monsters.css so the appearance
+    // settings show what the layout actually renders.
+    cssProperties: {
+        primaryColor: "#000",
+        ruleColor: "#000",
+        backgroundColor: "#fefaf0",
+        boxShadowBlur: "1em",
+        contentFont: "serif",
+        headingFont: "masonregular, serif"
+    } as Layout["cssProperties"]
 }
