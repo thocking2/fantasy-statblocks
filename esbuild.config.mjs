@@ -59,6 +59,11 @@ const params = {
         "@lezer/common",
         /* "@lezer/lr", */
         "@lezer/highlight",
+        // Optional peer of svelte-multiselect's FileDetails.svelte, used only
+        // for a file-preview syntax-highlighting feature this plugin doesn't
+        // exercise (we only use its plain multiselect dropdown).
+        "@wooorm/starry-night",
+        "@wooorm/starry-night/source.svelte",
         ...builtins
     ],
     format: "cjs",
@@ -72,7 +77,7 @@ const params = {
     plugins: [
         sassPlugin(),
         sveltePlugin({
-            compilerOptions: { css: true },
+            compilerOptions: { css: "injected" },
             preprocess: sveltePreprocess(),
             filterWarnings: (warning) => {
                 return false;

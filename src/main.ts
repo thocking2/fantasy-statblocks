@@ -15,7 +15,7 @@ import StatBlockRenderer from "./view/statblock";
 import { nanoid } from "./util/util";
 import type { Monster, StatblockParameters } from "../index";
 import StatblockSettingTab from "./settings/settings";
-import fastCopy from "fast-copy";
+import { copy as fastCopy } from "fast-copy";
 
 import type { HomebrewCreature } from "src/types/HomebrewCreature";
 import type {
@@ -69,7 +69,7 @@ export default class StatBlockPlugin extends Plugin {
 
     getRoller(str: string) {
         if (!this.canUseDiceRoller) return;
-        const roller = window.DiceRoller.getRollerSync(str, DICE_ROLLER_SOURCE);
+        const roller = window.DiceRoller.getRoller(str, DICE_ROLLER_SOURCE);
         return roller;
     }
     getRollerString(str: string) {
@@ -221,7 +221,6 @@ export default class StatBlockPlugin extends Plugin {
         );
         if (this.canUseDiceRoller) {
             window.DiceRoller.registerSource(DICE_ROLLER_SOURCE, {
-                showDice: true,
                 shouldRender: this.settings.renderDice,
                 showFormula: false,
                 showParens: false,
@@ -232,7 +231,6 @@ export default class StatBlockPlugin extends Plugin {
         this.registerEvent(
             this.app.workspace.on("dice-roller:loaded", () => {
                 window.DiceRoller.registerSource(DICE_ROLLER_SOURCE, {
-                    showDice: true,
                     shouldRender: this.settings.renderDice,
                     showFormula: false,
                     showParens: false,

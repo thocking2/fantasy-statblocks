@@ -13,7 +13,7 @@ import {
 import type StatBlockPlugin from "src/main";
 import LayoutEditor from "./layout/LayoutEditor.svelte";
 
-import fastCopy from "fast-copy";
+import { copy as fastCopy } from "fast-copy";
 
 import { ExpectedValue } from "@javalent/dice-roller";
 import { FolderInputSuggest } from "@javalent/utilities";
@@ -293,7 +293,6 @@ export default class StatblockSettingTab extends PluginSettingTab {
                             window.DiceRoller.registerSource(
                                 DICE_ROLLER_SOURCE,
                                 {
-                                    showDice: true,
                                     shouldRender:
                                         this.plugin.settings.renderDice,
                                     showFormula: false,

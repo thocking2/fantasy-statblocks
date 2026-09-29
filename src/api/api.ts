@@ -1,4 +1,4 @@
-import fastCopy from "fast-copy";
+import { copy as fastCopy } from "fast-copy";
 import type { Monster } from "index";
 import { Component, MarkdownRenderer } from "obsidian";
 import type { HomebrewCreature } from "src/types/HomebrewCreature";

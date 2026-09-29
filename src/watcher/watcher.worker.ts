@@ -1,5 +1,5 @@
 import type { Monster } from "index";
-import copy from "fast-copy";
+import { copy } from "fast-copy";
 import type { CachedMetadata, FrontMatterInfo } from "obsidian";
 import { transformTraits } from "src/util/util";
 import YAML from "yaml";
