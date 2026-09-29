@@ -161,14 +161,13 @@ class Parser {
 
     async getFileData(path: string): Promise<FileCacheMessage | null> {
         return new Promise((resolve) => {
-            ctx.addEventListener(
-                "message",
-                (event: MessageEvent<FileCacheMessage | null>) => {
-                    if (event.data && event.data.type == "file") {
-                        resolve(event.data);
-                    }
+            const listener = (event: MessageEvent<FileCacheMessage | null>) => {
+                if (event.data && event.data.type == "file") {
+                    ctx.removeEventListener("message", listener);
+                    resolve(event.data);
                 }
-            );
+            };
+            ctx.addEventListener("message", listener);
             ctx.postMessage<GetFileCacheMessage>({ data: path, type: "get" });
         });
     }
