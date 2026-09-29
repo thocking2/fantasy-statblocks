@@ -305,6 +305,14 @@ export default class StatBlockRenderer extends MarkdownRenderChild {
                         }
                     }
                 }
+                /**
+                 * The additive values have been merged into the property.
+                 * Remove them so they are not applied again (e.g. when the
+                 * built creature is saved to the bestiary).
+                 */
+                if (`${property}+` in built) {
+                    delete built[`${property}+` as keyof Monster];
+                }
             }
         }
 
