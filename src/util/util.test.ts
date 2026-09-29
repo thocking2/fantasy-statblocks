@@ -105,6 +105,17 @@ describe("stringify", () => {
 });
 
 describe("stringifyWithKeys", () => {
+    it("does not truncate long arrays or objects", () => {
+        expect(stringifyWithKeys(["a", "b", "c", "d", "e", "f", "g"])).toBe(
+            "a b c d e f g"
+        );
+        expect(stringifyWithKeys({ a: 1, b: 2, c: 3, d: 4 })).toBe(
+            "a 1 b 2 c 3 d 4"
+        );
+    });
+    it("keeps zero values", () => {
+        expect(stringifyWithKeys({ bonus: 0 })).toBe("bonus 0");
+    });
     it("interleaves object keys and values", () => {
         expect(stringifyWithKeys({ to: "hit", bonus: 5 })).toBe(
             "to hit bonus 5"
