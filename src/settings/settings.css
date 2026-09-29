@@ -224,10 +224,10 @@ details[open].statblock-nested-settings > summary .collapser > .handle {
         transform: /* scale(1) */ rotate(660deg);
     }
 }
-/** Layout editor modal on mobile/tablet: default modal width, scrollable content */
-.modal.statblock-layout-editor-modal.is-mobile-editor > .modal-content {
-    display: block;
-    max-height: 80vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+/** Layout editor sub-page */
+.statblock-layout-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--size-4-2);
+    padding: var(--size-4-2) 0;
 }

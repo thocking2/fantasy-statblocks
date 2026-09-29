@@ -3,13 +3,14 @@ import {
     ButtonComponent,
     normalizePath,
     Notice,
-    Platform,
     PluginSettingTab,
+    SettingPage,
     setIcon,
     Setting,
     TFolder,
     type SettingDefinition,
-    type SettingDefinitionItem
+    type SettingDefinitionItem,
+    type SettingGroupItem
 } from "obsidian";
 
 import type StatBlockPlugin from "src/main";
@@ -122,7 +123,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
     $UI?: ReturnType<typeof mount>;
     constructor(
         app: App,
-        private plugin: StatBlockPlugin
+        public plugin: StatBlockPlugin
     ) {
         super(app, plugin);
         this.importer = new Importer(this.plugin);
@@ -355,7 +356,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
         ];
     }
 
-    getLayoutDefinitions(): SettingDefinition[] {
+    getLayoutDefinitions(): SettingGroupItem[] {
         const layouts = this.plugin.manager.getAllLayouts();
         return [
             {
@@ -386,29 +387,19 @@ export default class StatblockSettingTab extends PluginSettingTab {
                 }
             },
             {
+                type: "page",
                 name: "Add New Layout",
-                aliases: ["create layout"],
-                render: (setting) => {
-                    setting.addButton((b) =>
-                        b
-                            .setIcon("plus-with-circle")
-                            .setTooltip("Add New Layout")
-                            .onClick(() => {
-                                const modal = new CreateStatblockModal(
-                                    this.plugin
-                                );
-                                modal.onClose = async () => {
-                                    if (!modal.saved) return;
-                                    const l = this.getDuplicate(modal.layout);
-                                    this.plugin.settings.layouts.push(l);
-                                    this.plugin.manager.addLayout(l);
-                                    await this.plugin.saveSettings();
-                                    this.refresh();
-                                };
-                                modal.open();
-                            })
-                    );
-                }
+                desc: "Create a new statblock layout.",
+                page: () =>
+                    new LayoutPage(this, {
+                        layout: { name: "Layout", blocks: [], id: nanoid() },
+                        onSave: async (l) => {
+                            const dupe = this.getDuplicate(l);
+                            this.plugin.settings.layouts.push(dupe);
+                            this.plugin.manager.addLayout(dupe);
+                            await this.plugin.saveSettings();
+                        }
+                    })
             },
             {
                 name: "Default Layout",
@@ -454,160 +445,99 @@ export default class StatblockSettingTab extends PluginSettingTab {
         ];
     }
 
-    getLayoutListDefinitions(): SettingDefinition[] {
-        const defs: SettingDefinition[] = [];
+    getLayoutListDefinitions(): SettingGroupItem[] {
+        const defs: SettingGroupItem[] = [];
         for (const layout of this.plugin.manager.getAllDefaultLayouts()) {
             if (layout.removed) continue;
             defs.push({
+                type: "page",
                 name: layout.name,
-                aliases: ["layout"],
-                render: (setting) => {
-                    setting.addExtraButton((b) => {
-                        b.setIcon("pencil")
-                            .setTooltip("Edit")
-                            .onClick(() => {
-                                const modal = new CreateStatblockModal(
-                                    this.plugin,
-                                    layout
-                                );
-                                modal.onClose = async () => {
-                                    if (!modal.saved) return;
-                                    (modal.layout as DefaultLayout).edited =
-                                        true;
-                                    this.plugin.settings.defaultLayouts[
-                                        layout.id
-                                    ] = modal.layout;
-                                    await this.plugin.saveSettings();
-                                    this.plugin.manager.updateDefaultLayout(
-                                        layout.id,
-                                        modal.layout
-                                    );
-                                    this.refresh();
-                                };
-                                modal.open();
-                            });
-                    });
-                    if (layout.edited) {
-                        setting.addExtraButton((b) =>
-                            b
-                                .setIcon("undo")
-                                .setTooltip("Reset to default")
-                                .onClick(async () => {
-                                    const defLayout = DefaultLayouts.find(
-                                        ({ id }) => id == layout.id
-                                    )!;
-                                    delete this.plugin.settings.defaultLayouts[
-                                        layout.id
-                                    ];
-                                    await this.plugin.saveSettings();
-                                    this.plugin.manager.updateDefaultLayout(
-                                        layout.id,
-                                        defLayout
-                                    );
-                                    this.refresh();
-                                })
-                        );
-                    }
-                    this.addLayoutButtons(setting, layout, async () => {
-                        layout.removed = true;
-                        this.plugin.settings.defaultLayouts[layout.id] = layout;
-                        await this.plugin.saveSettings();
-                        this.refresh();
-                    });
-                }
+                page: () =>
+                    new LayoutPage(this, {
+                        layout,
+                        onSave: async (l) => {
+                            (l as DefaultLayout).edited = true;
+                            this.plugin.settings.defaultLayouts[layout.id] = l;
+                            await this.plugin.saveSettings();
+                            this.plugin.manager.updateDefaultLayout(
+                                layout.id,
+                                l
+                            );
+                        },
+                        onReset: layout.edited
+                            ? async () => {
+                                  const defLayout = DefaultLayouts.find(
+                                      ({ id }) => id == layout.id
+                                  )!;
+                                  delete this.plugin.settings.defaultLayouts[
+                                      layout.id
+                                  ];
+                                  await this.plugin.saveSettings();
+                                  this.plugin.manager.updateDefaultLayout(
+                                      layout.id,
+                                      defLayout
+                                  );
+                              }
+                            : undefined,
+                        onDelete: async () => {
+                            layout.removed = true;
+                            this.plugin.settings.defaultLayouts[layout.id] =
+                                layout;
+                            await this.plugin.saveSettings();
+                        }
+                    })
             });
         }
         for (const layout of this.plugin.settings.layouts) {
             defs.push({
+                type: "page",
                 name: layout.name,
-                aliases: ["layout"],
-                render: (setting) => {
-                    setting.addExtraButton((b) => {
-                        b.setIcon("pencil")
-                            .setTooltip("Edit")
-                            .onClick(() => {
-                                const modal = new CreateStatblockModal(
-                                    this.plugin,
-                                    layout
-                                );
-                                modal.onClose = async () => {
-                                    if (!modal.saved) return;
-                                    if (
-                                        DefaultLayouts.find(
-                                            ({ id }) => id == layout.id
-                                        )
-                                    ) {
-                                        (modal.layout as DefaultLayout).edited =
-                                            true;
-                                    }
-                                    this.plugin.settings.layouts.splice(
-                                        this.plugin.settings.layouts.indexOf(
-                                            layout
-                                        ),
-                                        1,
-                                        modal.layout
-                                    );
-                                    await this.plugin.saveSettings();
-                                    this.plugin.manager.updateLayout(
-                                        layout.id,
-                                        modal.layout
-                                    );
-                                    this.refresh();
-                                };
-                                modal.open();
-                            });
-                    });
-                    this.addLayoutButtons(setting, layout, async () => {
-                        this.plugin.settings.layouts =
-                            this.plugin.settings.layouts.filter(
-                                (l) => l.id !== layout.id
+                page: () =>
+                    new LayoutPage(this, {
+                        layout,
+                        onSave: async (l) => {
+                            if (DefaultLayouts.find(({ id }) => id == layout.id)) {
+                                (l as DefaultLayout).edited = true;
+                            }
+                            this.plugin.settings.layouts.splice(
+                                this.plugin.settings.layouts.indexOf(layout),
+                                1,
+                                l
                             );
-                        await this.plugin.saveSettings();
-                        this.plugin.manager.removeLayout(layout.id);
-                        this.refresh();
-                    });
-                }
+                            await this.plugin.saveSettings();
+                            this.plugin.manager.updateLayout(layout.id, l);
+                        },
+                        onDelete: async () => {
+                            this.plugin.settings.layouts =
+                                this.plugin.settings.layouts.filter(
+                                    (x) => x.id !== layout.id
+                                );
+                            await this.plugin.saveSettings();
+                            this.plugin.manager.removeLayout(layout.id);
+                        }
+                    })
             });
         }
         return defs;
     }
 
-    /** Copy, export and delete buttons shared by every layout row. */
-    private addLayoutButtons(
-        setting: Setting,
-        layout: Layout,
-        onDelete: () => Promise<void>
-    ) {
-        setting
-            .addExtraButton((b) => {
-                b.setIcon("duplicate-glyph")
-                    .setTooltip("Create Copy")
-                    .onClick(async () => {
-                        const dupe = this.getDuplicate(layout);
-                        this.plugin.settings.layouts.push(dupe);
-                        await this.plugin.saveSettings();
-                        this.plugin.manager.addLayout(dupe);
-                        this.refresh();
-                    });
-            })
-            .addExtraButton((b) => {
-                b.setIcon("import-glyph")
-                    .setTooltip("Export as JSON")
-                    .onClick(() => {
-                        const link = createEl("a");
-                        const file = new Blob([JSON.stringify(layout)], {
-                            type: "json"
-                        });
-                        const url = URL.createObjectURL(file);
-                        link.href = url;
-                        link.download = `${layout.name}.json`;
-                        link.click();
-                        URL.revokeObjectURL(url);
-                    });
-            })
-            .addExtraButton((b) => {
-                b.setIcon("trash").setTooltip("Delete").onClick(onDelete);
-            });
+    /** Saves a copy of `layout` next to the original. */
+    async copyLayout(layout: Layout) {
+        const dupe = this.getDuplicate(layout);
+        this.plugin.settings.layouts.push(dupe);
+        await this.plugin.saveSettings();
+        this.plugin.manager.addLayout(dupe);
+        this.refresh();
+    }
+
+    exportLayout(layout: Layout) {
+        const link = createEl("a");
+        const file = new Blob([JSON.stringify(layout)], { type: "json" });
+        const url = URL.createObjectURL(file);
+        link.href = url;
+        link.download = `${layout.name}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
     }
 
     /** Adds a button to `setting` that opens a hidden multi-file input. */
@@ -849,53 +779,70 @@ export default class StatblockSettingTab extends PluginSettingTab {
     }
 }
 
-class CreateStatblockModal extends FantasyStatblockModal {
-    creator?: ReturnType<typeof mount>;
+interface LayoutPageOptions {
     layout: Layout;
-    saved: boolean = false;
-    constructor(
-        public plugin: StatBlockPlugin,
-        layout: Layout = {
-            name: "Layout",
-            blocks: [],
-            id: nanoid()
-        }
-    ) {
-        super(plugin);
-        this.layout = fastCopy(layout);
-        this.modalEl.addClass("statblock-layout-editor-modal");
-        if (Platform.isMobile) {
-            /** The sidebar/settings modal styles assume the desktop two-pane
-             * layout and render blank with the single-column mobile editor. */
-            this.modalEl.addClass("is-mobile-editor");
-        } else {
-            this.modalEl.addClasses(["mod-sidebar-layout", "mod-settings"]);
-            this.contentEl.addClass("vertical-tabs-container");
-        }
-    }
+    onSave: (layout: Layout) => Promise<void>;
+    onDelete?: () => Promise<void>;
+    onReset?: () => Promise<void>;
+}
 
-    onOpen() {
-        this.display();
+/** Sub-page of the settings tab that edits a single layout. */
+class LayoutPage extends SettingPage {
+    private editor?: ReturnType<typeof mount>;
+    private layout: Layout;
+    constructor(
+        private tab: StatblockSettingTab,
+        private opts: LayoutPageOptions
+    ) {
+        super();
+        this.layout = fastCopy(opts.layout);
+        this.title = opts.layout.name;
     }
 
     display() {
-        this.titleEl.createSpan({ text: "Create Layout" });
-        this.creator = mount(LayoutEditor, {
-            target: this.contentEl,
-            props: {
-                layout: this.layout,
-                plugin: this.plugin
-            },
+        const { containerEl } = this;
+        containerEl.empty();
+        containerEl.addClass("statblock-layout-page");
+
+        const actions = containerEl.createDiv("statblock-layout-actions");
+        const button = (icon: string, tip: string, cb: () => unknown) =>
+            new ButtonComponent(actions)
+                .setIcon(icon)
+                .setTooltip(tip)
+                .onClick(async () => {
+                    await cb();
+                    this.tab.refresh();
+                });
+        button("duplicate-glyph", "Create Copy", () =>
+            this.tab.copyLayout(this.opts.layout)
+        );
+        button("import-glyph", "Export as JSON", () =>
+            this.tab.exportLayout(this.opts.layout)
+        );
+        if (this.opts.onReset) {
+            button("undo", "Reset to default", this.opts.onReset);
+        }
+        if (this.opts.onDelete) {
+            button("trash", "Delete", this.opts.onDelete);
+        }
+
+        this.editor = mount(LayoutEditor, {
+            target: containerEl.createDiv(),
+            props: { layout: this.layout, plugin: this.tab.plugin },
             events: {
-                saved: () => {
-                    this.saved = true;
-                    this.close();
-                },
-                cancel: () => {
-                    this.close();
+                saved: async () => {
+                    await this.opts.onSave(this.layout);
+                    new Notice(`Saved layout "${this.layout.name}".`);
+                    this.tab.refresh();
                 }
             }
         });
+    }
+
+    hide() {
+        if (this.editor) unmount(this.editor);
+        this.editor = undefined;
+        super.hide();
     }
 }
 

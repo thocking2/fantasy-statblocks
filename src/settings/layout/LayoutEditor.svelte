@@ -2,7 +2,6 @@
     import {
         ButtonComponent,
         ExtraButtonComponent,
-        Platform,
         setIcon,
         TextComponent
     } from "obsidian";
@@ -31,8 +30,6 @@
         "Advanced",
         "Previewer"
     ] as const;
-    let SelectedSection: (typeof SettingsSections)[number] =
-        SettingsSections[0];
 
     let editingName = false;
     const name = (node: HTMLElement) => {
@@ -80,14 +77,6 @@
                 dispatch("saved");
             });
     };
-    const cancel = (node: HTMLDivElement) => {
-        new ExtraButtonComponent(node)
-            .setIcon("cross")
-            .setTooltip("Cancel")
-            .onClick(() => {
-                dispatch("cancel");
-            });
-    };
 
     /** Mobile: null shows the section list, otherwise the selected submenu. */
     let mobileSection: (typeof SettingsSections)[number] | null = null;
@@ -111,58 +100,12 @@
 {@html `<style>
         ${$style.join("\n")}
     </style>`}
-{#if !Platform.isMobile}
-    <div class="vertical-tab-header">
-        <div class="vertical-tab-header-group">
-            <h3>Layout Editor</h3>
-
-            <div class="name" use:name />
-            <div class="vertical-tab-header-group-items">
-                {#each SettingsSections as SECTION}
-                    <div
-                        class="vertical-tab-nav-item"
-                        class:is-active={SelectedSection === SECTION}
-                        on:click={() => (SelectedSection = SECTION)}
-                    >
-                        {SECTION}
-                    </div>
-                {/each}
-            </div>
-        </div>
-        <div class="bottom">
-            <div class="save" use:save />
-            <div class="cancel" use:cancel />
-        </div>
-    </div>
-    <div
-        class="vertical-tab-content-container {SelectedSection.toLowerCase()}s"
-    >
-        <div class="vertical-tab-content">
-            {#if SelectedSection === "General"}
-                <Blocks />
-            {/if}
-            {#if SelectedSection === "Appearance"}
-                <Appearance />
-            {/if}
-            {#if SelectedSection === "Advanced"}
-                <Advanced />
-            {/if}
-            {#if SelectedSection === "Previewer"}
-                <Previewer
-                    {previewed}
-                    on:update={(ev) => (previewed = ev.detail)}
-                />
-            {/if}
-        </div>
-    </div>
-{:else}
     <div class="statblock-mobile">
         {#if mobileSection === null}
             <div class="top">
                 <div class="name" use:name />
                 <div class="buttons">
                     <div class="save" use:save />
-                    <div class="cancel" use:cancel />
                 </div>
             </div>
             <div class="mobile-menu">
@@ -184,7 +127,6 @@
                 </div>
                 <div class="buttons">
                     <div class="save" use:save />
-                    <div class="cancel" use:cancel />
                 </div>
             </div>
             <div class="mobile-section {mobileSection.toLowerCase()}s">
@@ -203,7 +145,6 @@
             </div>
         {/if}
     </div>
-{/if}
 
 <style scoped>
     .statblock-mobile {
@@ -245,18 +186,5 @@
         display: flex;
         justify-content: flex-end;
         align-items: center;
-    }
-    .vertical-tab-header {
-        display: flex;
-        flex-flow: column nowrap;
-    }
-    .vertical-tab-content {
-        padding: var(--size-4-8);
-    }
-    .bottom {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        margin-top: auto;
     }
 </style>
