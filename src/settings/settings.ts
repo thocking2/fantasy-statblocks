@@ -11,6 +11,7 @@ import {
 } from "obsidian";
 
 import type StatBlockPlugin from "src/main";
+import { mount, unmount } from "svelte";
 import LayoutEditor from "./layout/LayoutEditor.svelte";
 
 import { copy as fastCopy } from "fast-copy";
@@ -33,7 +34,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
     importer: Importer;
     results: Partial<Monster>[] = [];
     filter!: Setting;
-    $UI!: Creatures;
+    $UI?: ReturnType<typeof mount>;
     constructor(app: App, private plugin: StatBlockPlugin) {
         super(app, plugin);
         this.importer = new Importer(this.plugin);
@@ -1147,7 +1148,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
         const ancestor = this.containerEl.closest(".statblock-settings")!;
         const { backgroundColor, paddingTop } = getComputedStyle(ancestor);
 
-        this.$UI = new Creatures({
+        this.$UI = mount(Creatures, {
             target: additionalContainer,
             props: {
                 plugin: this.plugin,
@@ -1157,12 +1158,13 @@ export default class StatblockSettingTab extends PluginSettingTab {
         });
     }
     override hide() {
-        this.$UI.$destroy();
+        if (this.$UI) unmount(this.$UI);
+        this.$UI = undefined;
     }
 }
 
 class CreateStatblockModal extends FantasyStatblockModal {
-    creator!: LayoutEditor;
+    creator?: ReturnType<typeof mount>;
     layout: Layout;
     saved: boolean = false;
     constructor(
@@ -1189,20 +1191,21 @@ class CreateStatblockModal extends FantasyStatblockModal {
 
     display() {
         this.titleEl.createSpan({ text: "Create Layout" });
-        this.creator = new LayoutEditor({
+        this.creator = mount(LayoutEditor, {
             target: this.contentEl,
             props: {
                 layout: this.layout,
                 plugin: this.plugin
+            },
+            events: {
+                saved: () => {
+                    this.saved = true;
+                    this.close();
+                },
+                cancel: () => {
+                    this.close();
+                }
             }
-        });
-
-        this.creator.$on("saved", () => {
-            this.saved = true;
-            this.close();
-        });
-        this.creator.$on("cancel", () => {
-            this.close();
         });
     }
 }

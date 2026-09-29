@@ -78,9 +78,7 @@ const params = {
         sassPlugin(),
         sveltePlugin({
             compilerOptions: {
-                css: "injected",
-                // Components are instantiated with `new` and use $on/$set/$destroy
-                compatibility: { componentApi: 4 }
+                css: "injected"
             },
             preprocess: sveltePreprocess(),
             filterWarnings: (warning) => {
