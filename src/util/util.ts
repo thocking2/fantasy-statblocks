@@ -101,18 +101,18 @@ export const stringifyWithKeys = (
     if (depth == 5) {
         return "";
     }
-    if (!property || property == null) return ``;
+    if (property == null) return ``;
     if (typeof property == "string") return property;
     if (typeof property == "number") return `${property}`;
     if (Array.isArray(property)) {
         ret.push(
-            `${property.map((p) => stringifyWithKeys(p, depth++)).join(" ")}`
+            `${property.map((p) => stringifyWithKeys(p, depth + 1)).join(" ")}`
         );
     } else if (typeof property == "object") {
         for (const [key, value] of Object.entries(property)) {
             ret.push(
-                stringifyWithKeys(key, depth++),
-                stringifyWithKeys(value, depth++)
+                stringifyWithKeys(key, depth + 1),
+                stringifyWithKeys(value, depth + 1)
             );
         }
     }
