@@ -7,6 +7,7 @@ import {
     setIcon,
     Setting,
     TFolder,
+    type SettingDefinition,
     type SettingDefinitionItem
 } from "obsidian";
 
@@ -99,15 +100,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
             {
                 type: "group",
                 heading: "General Settings",
-                items: [
-                    {
-                        name: "General Settings",
-                        desc: "Dice roller integration, wikilink rendering, and the 5e SRD bestiary.",
-                        render: (setting) => {
-                            this.generateTopSettings(setting.settingEl);
-                        }
-                    }
-                ]
+                items: this.getGeneralDefinitions()
             },
             {
                 type: "group",
@@ -179,6 +172,102 @@ export default class StatblockSettingTab extends PluginSettingTab {
                 ]
             }
         ];
+    }
+
+    /**
+     * General settings as native toggle controls so Obsidian renders them as
+     * regular setting rows. Values are read/written through
+     * getControlValue/setControlValue below.
+     */
+    getGeneralDefinitions(): SettingDefinition[] {
+        const diceDesc = (action: string, flag: string) =>
+            createFragment((e) => {
+                if (this.plugin.diceRollerInstalled) {
+                    e.createSpan({ text: `${action} by default. Use ` });
+                    e.createEl("code", { text: `${flag}: false` });
+                    e.createSpan({ text: " to disable per-statblock." });
+                } else {
+                    e.createSpan({
+                        text: "This setting is only usable with the Dice Roller plugin enabled."
+                    });
+                }
+            });
+        return [
+            {
+                name: "Integrate Dice Roller",
+                desc: diceDesc("Add Dice Roller dice to statblocks", "dice"),
+                control: {
+                    type: "toggle",
+                    key: "useDice",
+                    disabled: () => !this.plugin.diceRollerInstalled
+                }
+            },
+            {
+                name: "Render Dice Rolls",
+                desc: diceDesc(
+                    "Roll graphical dice inside statblocks",
+                    "render"
+                ),
+                control: {
+                    type: "toggle",
+                    key: "renderDice",
+                    disabled: () => !this.plugin.diceRollerInstalled
+                }
+            },
+            {
+                name: "Try to Render Wikilinks",
+                desc: createFragment((e) => {
+                    e.createSpan({
+                        text: "The plugin will attempt to detect wikilinks inside Statblocks."
+                    });
+                    e.createEl("br");
+                    e.createEl("strong", {
+                        text: "Please note: these links will not be added to the graph."
+                    });
+                }),
+                control: { type: "toggle", key: "tryToRenderLinks" }
+            },
+            {
+                name: "Enable 5e SRD",
+                desc: "Use the Dungeons & Dragons 5th Edition System Reference Document monsters.",
+                control: { type: "toggle", key: "enableSRD" }
+            }
+        ];
+    }
+
+    getControlValue(key: string): unknown {
+        if (key === "enableSRD") return !this.plugin.settings.disableSRD;
+        return (this.plugin.settings as unknown as Record<string, unknown>)[
+            key
+        ];
+    }
+
+    async setControlValue(key: string, value: unknown): Promise<void> {
+        const settings = this.plugin.settings;
+        switch (key) {
+            case "enableSRD":
+                settings.disableSRD = !value;
+                await this.plugin.saveSettings();
+                this.plugin.app.workspace.trigger(
+                    "fantasy-statblocks:srd-change",
+                    value
+                );
+                return;
+            case "renderDice":
+                settings.renderDice = value as boolean;
+                if (this.plugin.diceRollerInstalled) {
+                    window.DiceRoller.registerSource(DICE_ROLLER_SOURCE, {
+                        shouldRender: settings.renderDice,
+                        showFormula: false,
+                        showParens: false,
+                        expectedValue: ExpectedValue.Average
+                    });
+                }
+                break;
+            default:
+                (settings as unknown as Record<string, unknown>)[key] = value;
+        }
+        await this.plugin.saveSettings();
     }
 
     generateAdvancedSettings(container: HTMLElement) {
