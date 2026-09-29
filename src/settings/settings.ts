@@ -167,11 +167,6 @@ export default class StatblockSettingTab extends PluginSettingTab {
             },
             {
                 type: "group",
-                heading: "Saved Layouts",
-                items: this.getLayoutListDefinitions()
-            },
-            {
-                type: "group",
                 heading: "Import Homebrew Creatures",
                 items: this.getImportDefinitions()
             },
@@ -441,8 +436,24 @@ export default class StatblockSettingTab extends PluginSettingTab {
                         });
                     });
                 }
+            },
+            {
+                type: "page",
+                name: "Saved Layouts",
+                desc: "Edit, copy, export, and delete saved layouts.",
+                displayValue: () => `${this.getLayoutCount()} layouts`,
+                items: this.getLayoutListDefinitions()
             }
         ];
+    }
+
+    private getLayoutCount() {
+        return (
+            this.plugin.manager
+                .getAllDefaultLayouts()
+                .filter((l) => !l.removed).length +
+            this.plugin.settings.layouts.length
+        );
     }
 
     getLayoutListDefinitions(): SettingGroupItem[] {
