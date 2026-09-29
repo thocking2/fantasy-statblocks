@@ -654,7 +654,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
         ];
     }
 
-    getBestiaryDefinitions(): SettingDefinition[] {
+    getBestiaryDefinitions(): SettingDefinitionItem[] {
         return [
             {
                 name: "Add Creature",
@@ -670,11 +670,22 @@ export default class StatblockSettingTab extends PluginSettingTab {
                 }
             },
             {
+                type: "group",
+                heading: "Saved Creatures",
+                items: this.getSavedCreaturesDefinitions()
+            }
+        ];
+    }
+
+    getSavedCreaturesDefinitions(): SettingDefinition[] {
+        return [
+            {
                 name: "Saved Creatures",
                 desc: "Browse, edit, and remove saved creatures.",
                 aliases: ["monsters", "creatures", "bestiary"],
                 render: (setting) => {
                     setting.settingEl.addClass("statblock-creatures-setting");
+                    setting.infoEl.detach();
                     const ancestor =
                         setting.settingEl.closest(".statblock-settings") ??
                         this.containerEl;

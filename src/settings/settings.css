@@ -1,3 +1,7 @@
+.setting-item.statblock-creatures-setting {
+    display: block;
+}
+
 .statblock-filter-container .search-input-container {
     margin-bottom: 0;
 }
