@@ -2,7 +2,6 @@
     import {
         ButtonComponent,
         ExtraButtonComponent,
-        setIcon,
         TextComponent
     } from "obsidian";
 
@@ -78,20 +77,6 @@
             });
     };
 
-    /** Mobile: null shows the section list, otherwise the selected submenu. */
-    let mobileSection: (typeof SettingsSections)[number] | null = null;
-    const back = (node: HTMLElement) => {
-        new ExtraButtonComponent(node)
-            .setIcon("chevron-left")
-            .setTooltip("Back")
-            .onClick(() => {
-                mobileSection = null;
-            });
-    };
-    const chevron = (node: HTMLElement) => {
-        setIcon(node, "chevron-right");
-    };
-
     const style = derived(store, (layout) => {
         return plugin.manager.getSheetRules(layout);
     });
@@ -101,49 +86,29 @@
         ${$style.join("\n")}
     </style>`}
     <div class="statblock-mobile">
-        {#if mobileSection === null}
-            <div class="top">
-                <div class="name" use:name />
-                <div class="buttons">
-                    <div class="save" use:save />
-                </div>
+        <div class="top">
+            <div class="name" use:name />
+            <div class="buttons">
+                <div class="save" use:save />
             </div>
-            <div class="mobile-menu">
-                {#each SettingsSections as SECTION}
-                    <div
-                        class="mobile-menu-item"
-                        on:click={() => (mobileSection = SECTION)}
-                    >
-                        <span>{SECTION}</span>
-                        <span class="chevron" use:chevron />
-                    </div>
-                {/each}
-            </div>
-        {:else}
-            <div class="top">
-                <div class="name">
-                    <div class="back" use:back />
-                    <h5>{mobileSection}</h5>
-                </div>
-                <div class="buttons">
-                    <div class="save" use:save />
-                </div>
-            </div>
-            <div class="mobile-section {mobileSection.toLowerCase()}s">
-                {#if mobileSection === "General"}
+        </div>
+        {#each SettingsSections as SECTION}
+            <div class="mobile-section {SECTION.toLowerCase()}s">
+                <h3 class="section-heading">{SECTION}</h3>
+                {#if SECTION === "General"}
                     <Blocks />
-                {:else if mobileSection === "Appearance"}
+                {:else if SECTION === "Appearance"}
                     <Appearance />
-                {:else if mobileSection === "Advanced"}
+                {:else if SECTION === "Advanced"}
                     <Advanced />
-                {:else if mobileSection === "Previewer"}
+                {:else if SECTION === "Previewer"}
                     <Previewer
                         {previewed}
                         on:update={(ev) => (previewed = ev.detail)}
                     />
                 {/if}
             </div>
-        {/if}
+        {/each}
     </div>
 
 <style scoped>
@@ -152,17 +117,10 @@
         flex-flow: column;
         gap: 0.25rem;
     }
-    .mobile-menu {
-        display: flex;
-        flex-flow: column;
-    }
-    .mobile-menu-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: var(--size-4-3) var(--size-4-4);
+    .section-heading {
+        margin: var(--size-4-4) 0 var(--size-4-2);
+        padding-bottom: var(--size-4-1);
         border-bottom: 1px solid var(--background-modifier-border);
-        cursor: pointer;
     }
     .mobile-section.previewers {
         min-height: 60vh;
