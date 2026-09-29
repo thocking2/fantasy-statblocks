@@ -1,4 +1,4 @@
-import type { Monster } from "types";
+import type { Monster } from "index";
 const SAVES: Record<
     string,
     | "strength"
@@ -32,6 +32,7 @@ export async function buildMonsterFromImprovedInitiativeFile(
                     try {
                         const monster = json[key];
                         const importedMonster: Monster = {
+                            bestiary: true,
                             name: monster.Name,
                             source: monster.Source?.trim().length
                                 ? monster.Source?.trim()
@@ -163,7 +164,7 @@ export async function buildMonsterFromImprovedInitiativeFile(
                                         };
                                     }
                                 ) ?? [],
-                            image: null
+                            image: undefined
                         };
                         monsterMap.push(importedMonster);
                     } catch (e) {

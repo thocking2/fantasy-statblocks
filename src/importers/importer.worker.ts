@@ -111,10 +111,10 @@ ctx.onmessage = async (event) => {
 
 ctx.addEventListener(
     "unhandledrejection",
-    function (event: PromiseRejectionEvent) {
+    function (event: Event) {
         // the event object has two special properties:
         // event.promise - the promise that generated the error
         // event.reason  - the unhandled error object
-        throw event.reason;
+        throw (event as PromiseRejectionEvent).reason;
     }
 );

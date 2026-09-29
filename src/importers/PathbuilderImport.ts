@@ -1,6 +1,6 @@
-import { Monster, Trait } from "index";
+import type { Monster, Trait } from "index";
 import { ONE_ACTION, getACStats, addSign, getModifierToDiceRoll, toTitleCase } from "./pf2eMonsterToolImport";
-import { Abilities, Proficiencies, PathbuilderCharacter, Weapon, Armor, Build, FocusTradition } from "./Pathbuilder.d";
+import type { Abilities, Proficiencies, PathbuilderCharacter, Weapon, Armor, Build, FocusTradition } from "./Pathbuilder.d";
 
 const skillAbilityMap: Record<string, keyof Abilities> = {
     acrobatics: "dex",
@@ -97,7 +97,8 @@ export async function buildMonsterFromPathbuilderFile(file: File): Promise<Monst
                     languages: pc.languages.join(", "),
                     cr: pc.level,
                     bestiary: false,
-                    stats: null
+                    // no ability scores are provided; preserve previous behavior
+                    stats: null as unknown as Monster["stats"]
                 };
                 resolve([monster]);
             } catch (e) {
