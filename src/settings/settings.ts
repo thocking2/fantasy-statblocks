@@ -1175,7 +1175,11 @@ class CreateStatblockModal extends FantasyStatblockModal {
     ) {
         super(plugin);
         this.layout = fastCopy(layout);
-        this.modalEl.addClasses(["mod-sidebar-layout", "mod-settings"]);
+        this.modalEl.addClasses([
+            "mod-sidebar-layout",
+            "mod-settings",
+            "statblock-layout-editor-modal"
+        ]);
         this.contentEl.addClass("vertical-tabs-container");
     }
 

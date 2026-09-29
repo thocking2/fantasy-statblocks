@@ -234,7 +234,7 @@ details[open].statblock-nested-settings > summary .collapser > .handle {
     }
 }
 /** Layout editor modal: allow content to scroll on mobile */
-body.is-mobile .modal.mod-sidebar-layout.mod-settings > .vertical-tabs-container {
+body.is-mobile .modal.statblock-layout-editor-modal > .vertical-tabs-container {
     display: block;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
