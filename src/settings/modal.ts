@@ -2,12 +2,13 @@ import type { Monster } from "index";
 import { Modal, Notice, Platform } from "obsidian";
 import type StatBlockPlugin from "src/main";
 
+import { mount, unmount } from "svelte";
 import EditMonsterApp from "./EditMonster.svelte";
 import StatBlockRenderer from "src/view/statblock";
 import FantasyStatblockModal from "src/modal/modal";
 
 export class EditMonsterModal extends FantasyStatblockModal {
-    private _instance!: EditMonsterApp;
+    private _instance?: ReturnType<typeof mount>;
     constructor(
         plugin: StatBlockPlugin,
         private monster: Partial<Monster> = {}
@@ -16,27 +17,33 @@ export class EditMonsterModal extends FantasyStatblockModal {
     }
 
     onOpen() {
-        this._instance = new EditMonsterApp({
+        this._instance = mount(EditMonsterApp, {
             target: this.contentEl,
             props: {
                 monster: this.monster
+            },
+            events: {
+                cancel: () => {
+                    this.close();
+                },
+                save: async ({ detail }: { detail: Monster }) => {
+                    if (!detail.name) {
+                        new Notice("Creatures must be given a name.");
+                        return;
+                    }
+                    await this.plugin.updateMonster(
+                        this.monster as Monster,
+                        detail
+                    );
+                    this.close();
+                }
             }
-        });
-        this._instance.$on("cancel", () => {
-            this.close();
-        });
-        this._instance.$on("save", async ({ detail }: { detail: Monster }) => {
-            if (!detail.name) {
-                new Notice("Creatures must be given a name.");
-                return;
-            }
-            await this.plugin.updateMonster(this.monster as Monster, detail);
-            this.close();
         });
     }
     onClose() {}
     close() {
-        if (this._instance) this._instance.$destroy();
+        if (this._instance) unmount(this._instance);
+        this._instance = undefined;
         super.close();
     }
 }

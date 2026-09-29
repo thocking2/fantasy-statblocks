@@ -28,6 +28,7 @@ import type {
     ActionItem
 } from "src/layouts/layout.types";
 import type StatBlockPlugin from "src/main";
+import { mount } from "svelte";
 import TableHeaders from "./TableHeaders.svelte";
 import SubheadingProperty from "./SubheadingProperty.svelte";
 import IfElseConditions from "./IfElseConditions.svelte";
@@ -344,7 +345,7 @@ class IfElseModal extends BlockModal<IfElseItem> {
         this.buildButtons(this.contentEl.createDiv());
     }
     buildConditions(el: HTMLElement) {
-        new IfElseConditions({
+        mount(IfElseConditions, {
             target: el,
             props: {
                 plugin: this.plugin,
@@ -864,16 +865,18 @@ class SubheadingModal extends BasicModal<SubHeadingItem> {
             );
 
         const additional = container.createDiv("additional");
-        const sub = new SubheadingProperty({
+        mount(SubheadingProperty, {
             target: additional,
             props: {
                 properties: this.block.properties.map((prop) => {
                     return { prop, id: nanoid() };
                 })
+            },
+            events: {
+                sorted: (e: CustomEvent<string[]>) => {
+                    block.properties = [...e.detail];
+                }
             }
-        });
-        sub.$on("sorted", (e: CustomEvent<string[]>) => {
-            block.properties = [...e.detail];
         });
     }
     buildSeparator(el: HTMLDivElement) {
@@ -956,13 +959,18 @@ class TableModal extends BasicModal<TableItem> {
                 })
             );
         const additional = container.createDiv("additional");
-        new TableHeaders({
+        mount(TableHeaders, {
             target: additional,
             props: {
                 headers: this.block.headers
+            },
+            events: {
+                sorted: (e: CustomEvent<{ name: string }[]>) => {
+                    this.block.headers = [
+                        ...(e.detail?.map((v) => v.name) ?? [])
+                    ];
+                }
             }
-        }).$on("sorted", (e: CustomEvent<{ name: string }[]>) => {
-            this.block.headers = [...(e.detail?.map((v) => v.name) ?? [])];
         });
         new Setting(el)
             .setName("Calculate Modifiers")

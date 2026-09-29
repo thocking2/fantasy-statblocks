@@ -8,7 +8,13 @@
     import Subheading from "./Subheading.svelte";
     import Table from "./Table.svelte";
     import Text from "./Text.svelte";
-    import { createEventDispatcher, getAllContexts, getContext } from "svelte";
+    import {
+        createEventDispatcher,
+        getAllContexts,
+        getContext,
+        flushSync,
+        mount
+    } from "svelte";
     import Image from "./Image.svelte";
     import type { Layout, StatblockItem } from "src/layouts/layout.types";
     import { /* linkifySpells, */ slugify, stringify } from "src/util/util";
@@ -115,7 +121,7 @@
         switch (item.type) {
             case "group": {
                 if (item.heading) {
-                    new SectionHeading({
+                    mount(SectionHeading, {
                         target,
                         props: {
                             monster,
@@ -137,7 +143,7 @@
                 break;
             }
             case "action": {
-                new Action({
+                mount(Action, {
                     target,
                     props: {
                         block: item,
@@ -147,7 +153,7 @@
                 break;
             }
             case "javascript": {
-                new JavaScript({
+                mount(JavaScript, {
                     target,
                     props: {
                         block: item
@@ -161,7 +167,7 @@
                     const element = getElementForStatblockItem(nested);
                     elements.push(...element);
                 }
-                new Collapse({
+                mount(Collapse, {
                     target,
                     props: {
                         block: item,
@@ -172,16 +178,18 @@
                 break;
             }
             case "heading": {
-                const heading = new Heading({
+                mount(Heading, {
                     target,
                     props: {
                         monster,
                         item
                     },
-                    context
+                    context,
+                    events: {
+                        save: (e: CustomEvent) => dispatch("save", e.detail),
+                        export: (e: CustomEvent) => dispatch("export", e.detail)
+                    }
                 });
-                heading.$on("save", (e) => dispatch("save", e.detail));
-                heading.$on("export", (e) => dispatch("export", e.detail));
                 break;
             }
             case "ifelse": {
@@ -216,7 +224,7 @@
             }
             case "inline": {
                 if (item.heading) {
-                    new SectionHeading({
+                    mount(SectionHeading, {
                         target,
                         props: {
                             monster,
@@ -247,7 +255,7 @@
                 break;
             }
             case "image": {
-                new Image({
+                mount(Image, {
                     target,
                     props: {
                         monster,
@@ -280,7 +288,7 @@
                 break;
             }
             case "property": {
-                new PropertyLine({
+                mount(PropertyLine, {
                     target,
                     props: {
                         monster,
@@ -291,7 +299,7 @@
                 break;
             }
             case "saves": {
-                new Saves({
+                mount(Saves, {
                     target,
                     props: {
                         monster,
@@ -363,8 +371,9 @@
                 ) {
                     const block = spellBlocks[blockIndex];
                     if (block.header?.length) {
-                        const component = new Traits({
-                            target: createDiv(),
+                        const holder = createDiv();
+                        mount(Traits, {
+                            target: holder,
                             props: {
                                 name:
                                     blockIndex == 0
@@ -377,31 +386,28 @@
                                 trait: monster[item.properties[0]] as Trait
                             }
                         });
-                        targets.push(
-                            component.$$.root
-                                .firstElementChild as HTMLDivElement
-                        );
+                        flushSync();
+                        targets.push(holder.firstElementChild as HTMLDivElement);
                     }
                     for (let i = 0; i < block.spells.length; i++) {
                         const spell = block.spells[i];
-                        const component = new SpellItem({
-                            target: createDiv(),
+                        const holder = createDiv();
+                        mount(SpellItem, {
+                            target: holder,
                             props: {
                                 spell,
                                 first: i === 0,
                                 last: i === block.spells.length - 1
                             }
                         });
-                        targets.push(
-                            component.$$.root
-                                .firstElementChild as HTMLUListElement
-                        );
+                        flushSync();
+                        targets.push(holder.firstElementChild as HTMLUListElement);
                     }
                 }
                 break;
             }
             case "subheading": {
-                new Subheading({
+                mount(Subheading, {
                     target,
                     props: {
                         monster,
@@ -412,7 +418,7 @@
                 break;
             }
             case "table": {
-                new Table({
+                mount(Table, {
                     target,
                     props: {
                         monster,
@@ -423,7 +429,7 @@
                 break;
             }
             case "text": {
-                new Text({
+                mount(Text, {
                     target,
                     props: {
                         monster,
@@ -441,7 +447,7 @@
                 });
                 targets.push(firstElement);
                 if (item.heading) {
-                    new SectionHeading({
+                    mount(SectionHeading, {
                         target: firstElement.createDiv(
                             "statblock-section-heading"
                         ),
@@ -456,7 +462,7 @@
                     const prop = firstElement.createDiv(
                         `statblock-item-container statblock-trait-prop`
                     );
-                    new Traits({
+                    mount(Traits, {
                         target: prop,
                         props: {
                             name: "",
@@ -475,7 +481,7 @@
                 }
                 try {
                     if (blocks.length > 0) {
-                        new Traits({
+                        mount(Traits, {
                             target: firstElement.createDiv(
                                 `statblock-item-container statblock-trait-prop`
                             ),
@@ -496,7 +502,7 @@
                             ).createDiv(
                                 `statblock-item-container statblock-trait-prop`
                             );
-                            new Traits({
+                            mount(Traits, {
                                 target: prop,
                                 props: {
                                     name: block.name,
@@ -526,7 +532,7 @@
                     ...(classes ?? [])
                 ].join(" ")
             );
-            new Rule({
+            mount(Rule, {
                 target: rule
             });
             targets.push(rule);
@@ -568,7 +574,7 @@
                 style: `width: ${columnWidth}`
             }
         });
-        const contentContainer = new Content({
+        mount(Content, {
             target: temp.createDiv({
                 cls: ["obsidian-statblock-plugin", "statblock", ...classes]
             }),
@@ -578,9 +584,9 @@
                 columns: 1,
                 columnWidth,
                 classes
-            }
-        });
-        contentContainer.$on("built", () => {
+            },
+            events: {
+                built: () => {
             const columnEl = temp.querySelector(".column")!;
             for (let target of targets) {
                 heights.push(target.scrollHeight);
@@ -604,6 +610,8 @@
             temp.detach();
 
             HEIGHT_READY = true;
+                }
+            }
         });
     };
 

@@ -12,6 +12,8 @@ import { MarkdownRenderChild } from "obsidian";
 import type { Monster, StatblockParameters, Trait } from "../../index";
 
 import Statblock from "./Statblock.svelte";
+import { mount } from "svelte";
+import { reactiveProps } from "src/util/reactive.svelte";
 import type StatBlockPlugin from "src/main";
 
 import { copy as fastCopy } from "fast-copy";
@@ -392,24 +394,24 @@ export default class StatBlockRenderer extends MarkdownRenderChild {
         }
     }
 
-    $ui!: Statblock;
+    $ui?: ReturnType<typeof mount>;
+    props!: {
+        monster: Monster;
+    } & Record<string, unknown>;
     async init() {
         this.containerEl.empty();
         this.monster = (await this.build()) as Monster;
-        this.$ui = new Statblock({
-            target: this.containerEl,
-            props: {
-                context: this.context,
-                monster: this.monster,
-                statblock: this.layout.blocks,
-                layout: this.layout,
-                plugin: this.plugin,
-                renderer: this,
-                canSave: this.canSave,
-                icons: this.icons ?? true
-            }
+        this.props = reactiveProps({
+            context: this.context,
+            monster: this.monster,
+            statblock: this.layout.blocks,
+            layout: this.layout,
+            plugin: this.plugin,
+            renderer: this,
+            canSave: this.canSave,
+            icons: this.icons ?? true
         });
-        this.$ui.$on("save", async () => {
+        const onSave = async () => {
             if (
                 Bestiary.hasCreature(this.monster.name) &&
                 !(await confirmWithModal(
@@ -423,13 +425,17 @@ export default class StatBlockRenderer extends MarkdownRenderChild {
                 source: this.monster.source ?? "Homebrew",
                 layout: this.layout.name
             } as Monster);
-        });
-
-        this.$ui.$on("export", () => {
+        };
+        const onExport = () => {
             this.plugin.exportAsPng(
                 this.monster.name,
                 this.containerEl.firstElementChild!
             );
+        };
+        this.$ui = mount(Statblock, {
+            target: this.containerEl,
+            props: this.props,
+            events: { save: onSave, export: onExport }
         });
 
         let extensionNames = Bestiary.getExtensionNames(
@@ -443,7 +449,7 @@ export default class StatBlockRenderer extends MarkdownRenderChild {
                     if (extensionNames.includes(creature.name)) {
                         this.monster = copy(creature);
                         this.monster = await this.build();
-                        this.$ui.$set({ monster: this.monster });
+                        this.props.monster = this.monster;
                     }
                 }
             )
