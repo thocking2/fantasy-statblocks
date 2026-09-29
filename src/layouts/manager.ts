@@ -48,7 +48,7 @@ export default class LayoutManager {
         const layoutName = `.${slugifyLayoutForCss(layout.name)}`;
         const rules: string[] = [
             this.#buildSheetRule(layoutName, {
-                ...DefaultLayoutCSSProperties,
+                ...this.#nonThemedDefaults(),
                 ...layout.cssProperties
             })
         ];
@@ -70,6 +70,17 @@ export default class LayoutManager {
             );
         }
         return rules;
+    }
+    /**
+     * Hard-coded color defaults are left out so that unset colors fall through
+     * to the `:root` variables in main.css, which themes and snippets override.
+     */
+    #nonThemedDefaults() {
+        return Object.fromEntries(
+            Object.entries(DefaultLayoutCSSProperties).filter(
+                ([, value]) => !(typeof value == "string" && /^#/.test(value))
+            )
+        );
     }
     generateStyleSheet(
         layout: Layout,
