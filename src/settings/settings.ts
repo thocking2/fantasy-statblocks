@@ -329,7 +329,7 @@ export default class StatblockSettingTab extends PluginSettingTab {
                 name: "Try to Save Data Atomically",
                 desc: createFragment((e) => {
                     e.createSpan({
-                        text: "This will cause to plugin to save data to a temporary file before saving the actual data file in an attempt to prevent data loss."
+                        text: "This will cause the plugin to save data to a temporary file before saving the actual data file in an attempt to prevent data loss."
                     });
                     e.createEl("br");
                     e.createSpan({
