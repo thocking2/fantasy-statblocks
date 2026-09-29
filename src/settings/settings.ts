@@ -3,10 +3,12 @@ import {
     ButtonComponent,
     normalizePath,
     Notice,
+    Platform,
     PluginSettingTab,
     setIcon,
     Setting,
     TFolder,
+    type SettingDefinition,
     type SettingDefinitionItem
 } from "obsidian";
 
@@ -19,6 +21,7 @@ import { copy as fastCopy } from "fast-copy";
 import { ExpectedValue } from "@javalent/dice-roller";
 import { FolderInputSuggest } from "@javalent/utilities";
 import type { Monster } from "index";
+import { Bestiary } from "src/bestiary/bestiary";
 import Importer from "src/importers/importer";
 import { DefaultLayouts } from "src/layouts";
 import { Layout5e } from "src/layouts/basic 5e/basic5e";
@@ -30,165 +33,306 @@ import { Watcher } from "src/watcher/watcher";
 import Creatures from "./creatures/Creatures.svelte";
 import { EditMonsterModal } from "./modal";
 
+const IMPORTERS: {
+    name: string;
+    desc: string | DocumentFragment;
+    input: string;
+    accept: string;
+    source: string;
+    tooltip: string;
+}[] = [
+    {
+        name: "Import DnDAppFile",
+        desc: "Only import content that you own.",
+        input: "dndappfile",
+        accept: ".xml",
+        source: "appfile",
+        tooltip: "Import DnDAppFile Data"
+    },
+    {
+        name: "Import Improved Initiative Data",
+        desc: "Only import content that you own.",
+        input: "improvedinitiative",
+        accept: ".json",
+        source: "improved",
+        tooltip: "Import Improved Initiative Data"
+    },
+    {
+        name: "Import CritterDB Data",
+        desc: "Only import content that you own.",
+        input: "critterdb",
+        accept: ".json",
+        source: "critter",
+        tooltip: "Import CritterDB Data"
+    },
+    {
+        name: "Import 5e.tools Data",
+        desc: "Only import content that you own.",
+        input: "fivetools",
+        accept: ".json",
+        source: "5e",
+        tooltip: "Import 5e.tools Data"
+    },
+    {
+        name: "Import TetraCube Data",
+        desc: "Only import content that you own.",
+        input: "tetra",
+        accept: ".json, .monster",
+        source: "tetra",
+        tooltip: "Import TetraCube Data"
+    },
+    {
+        name: "Import PF2eMonsterTools Data",
+        desc: "Only import content that you own.",
+        input: "PF2eMonsterTool",
+        accept: ".json, .monster",
+        source: "PF2eMonsterTool",
+        tooltip: "Import PF2EMonsterTools Data"
+    },
+    {
+        name: "Import Pathbuilder Data",
+        desc: "Import a PC or NPC exported from Pathbuilder2e.",
+        input: "pathbuilder",
+        accept: ".json",
+        source: "pathbuilder",
+        tooltip: "Import Pathbuilder Data"
+    },
+    {
+        name: "Import Generic Data",
+        desc: createFragment((e) => {
+            e.createSpan({
+                text: "Import generic JSON files. JSON objects will be imported "
+            });
+            e.createEl("strong", { text: "as-is" });
+            e.createSpan({ text: " and all objects must have the " });
+            e.createEl("code", { text: "name" });
+            e.createSpan({ text: " property." });
+        }),
+        input: "generic",
+        accept: ".json, .monster",
+        source: "generic",
+        tooltip: "Import Generic Data"
+    }
+];
+
 export default class StatblockSettingTab extends PluginSettingTab {
     importer: Importer;
     results: Partial<Monster>[] = [];
     filter!: Setting;
     $UI?: ReturnType<typeof mount>;
-    constructor(app: App, private plugin: StatBlockPlugin) {
+    constructor(
+        app: App,
+        private plugin: StatBlockPlugin
+    ) {
         super(app, plugin);
         this.importer = new Importer(this.plugin);
+        this.containerEl.addClass("statblock-settings");
     }
 
-    async display(): Promise<void> {
-        try {
-            let { containerEl } = this;
-
-            containerEl.empty();
-
-            containerEl.addClass("statblock-settings");
-
-            containerEl.createEl("h2", { text: "Fantasy Statblocks Settings" });
-
-            new Setting(containerEl).setHeading().setName("General Settings");
-            this.generateTopSettings(containerEl.createDiv());
-
-            new Setting(containerEl).setHeading().setName("Note Parsing");
-            this.generateParseSettings(containerEl.createDiv());
-
-            new Setting(containerEl).setHeading().setName("Advanced Settings");
-            this.generateAdvancedSettings(containerEl.createDiv());
-
-            new Setting(containerEl).setHeading().setName("Layouts");
-            this.generateLayouts(containerEl.createDiv());
-
-            new Setting(containerEl)
-                .setHeading()
-                .setName("Import Homebrew Creatures");
-            this.generateImports(containerEl.createDiv());
-
-            new Setting(containerEl).setHeading().setName("Bestiary");
-            this.generateMonsters(containerEl.createDiv());
-
-            const div = containerEl.createDiv("coffee");
-            div.createEl("a", {
-                href: "https://www.buymeacoffee.com/valentine195"
-            }).createEl("img", {
-                attr: {
-                    src: "https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=valentine195&button_colour=e3e7ef&font_colour=262626&font_family=Inter&outline_colour=262626&coffee_colour=ff0000"
-                }
-            });
-        } catch (e) {
-            console.error(e);
-            new Notice(
-                "There was an error displaying the settings tab for 5e Statblocks."
-            );
-        }
+    /** Re-reads the declarative definitions and re-renders the tab. */
+    refresh() {
+        this.update();
     }
+
+    /** Required by the base class; the tab is rendered from getSettingDefinitions(). */
+    display(): void {}
 
     /**
-     * Declarative definitions used by Obsidian's settings search (1.13.0+).
-     * Each existing section is a SettingGroup so it gets a proper heading
-     * from the framework; the group's single item keeps the section's
-     * existing imperative rendering via `render`, with a name/description so
-     * the section can be found from the global search. `display()` above
-     * remains as a fallback for Obsidian < 1.13.0, drawing the same headings
-     * itself since it isn't going through SettingGroup.
+     * Declarative definitions used by Obsidian's native, searchable settings
+     * (1.13.0+). Simple values are declared as controls; anything that needs
+     * custom UI is rendered imperatively into its own setting row.
      */
     getSettingDefinitions(): SettingDefinitionItem[] {
         return [
             {
                 type: "group",
                 heading: "General Settings",
-                items: [
-                    {
-                        name: "General Settings",
-                        desc: "Dice roller integration, wikilink rendering, and the 5e SRD bestiary.",
-                        render: (setting) => {
-                            this.generateTopSettings(setting.settingEl);
-                        }
-                    }
-                ]
+                items: this.getGeneralDefinitions()
             },
             {
                 type: "group",
                 heading: "Note Parsing",
-                items: [
-                    {
-                        name: "Note Parsing",
-                        desc: "Automatically parse creatures from frontmatter, bestiary folders, and debug messages.",
-                        aliases: ["frontmatter", "bestiary folder", "watcher"],
-                        render: (setting) => {
-                            this.generateParseSettings(setting.settingEl);
-                        }
-                    }
-                ]
+                items: this.getParseDefinitions()
             },
             {
                 type: "group",
                 heading: "Advanced Settings",
-                items: [
-                    {
-                        name: "Advanced Settings",
-                        desc: "Atomic data writes and other advanced plugin behavior.",
-                        render: (setting) => {
-                            this.generateAdvancedSettings(setting.settingEl);
-                        }
-                    }
-                ]
+                items: this.getAdvancedDefinitions()
             },
             {
                 type: "group",
                 heading: "Layouts",
-                items: [
-                    {
-                        name: "Layouts",
-                        desc: "Create, edit, import, export, and manage statblock layouts.",
-                        aliases: ["layout editor", "default layout"],
-                        render: (setting) => {
-                            this.generateLayouts(setting.settingEl);
-                        }
-                    }
-                ]
+                items: this.getLayoutDefinitions()
+            },
+            {
+                type: "group",
+                heading: "Saved Layouts",
+                items: this.getLayoutListDefinitions()
             },
             {
                 type: "group",
                 heading: "Import Homebrew Creatures",
-                items: [
-                    {
-                        name: "Import Homebrew Creatures",
-                        desc: "Import creatures from DnDAppFile, Improved Initiative, CritterDB, 5e.tools, TetraCube, PF2eMonsterTools, Pathbuilder, or generic JSON.",
-                        aliases: ["importer"],
-                        render: (setting) => {
-                            this.generateImports(setting.settingEl);
-                        }
-                    }
-                ]
+                items: this.getImportDefinitions()
             },
             {
-                type: "group",
-                heading: "Bestiary",
-                items: [
-                    {
-                        name: "Bestiary",
-                        desc: "Add, edit, and remove saved creatures.",
-                        aliases: ["monsters", "creatures"],
-                        render: (setting) => {
-                            this.generateMonsters(setting.settingEl);
-                        }
-                    }
-                ]
+                type: "page",
+                name: "Bestiary",
+                desc: "Add, browse, edit, and remove saved creatures.",
+                displayValue: () =>
+                    `${Bestiary.getBestiaryCreatures().length} creatures`,
+                items: this.getBestiaryDefinitions()
             }
         ];
     }
 
-    generateAdvancedSettings(container: HTMLElement) {
-        container.empty();
+    getGeneralDefinitions(): SettingDefinition[] {
+        const diceDesc = (action: string, flag: string) =>
+            createFragment((e) => {
+                if (this.plugin.diceRollerInstalled) {
+                    e.createSpan({ text: `${action} by default. Use ` });
+                    e.createEl("code", { text: `${flag}: false` });
+                    e.createSpan({ text: " to disable per-statblock." });
+                } else {
+                    e.createSpan({
+                        text: "This setting is only usable with the Dice Roller plugin enabled."
+                    });
+                }
+            });
+        return [
+            {
+                name: "Integrate Dice Roller",
+                desc: diceDesc("Add Dice Roller dice to statblocks", "dice"),
+                control: {
+                    type: "toggle",
+                    key: "useDice",
+                    disabled: () => !this.plugin.diceRollerInstalled
+                }
+            },
+            {
+                name: "Render Dice Rolls",
+                desc: diceDesc(
+                    "Roll graphical dice inside statblocks",
+                    "render"
+                ),
+                control: {
+                    type: "toggle",
+                    key: "renderDice",
+                    disabled: () => !this.plugin.diceRollerInstalled
+                }
+            },
+            {
+                name: "Try to Render Wikilinks",
+                desc: createFragment((e) => {
+                    e.createSpan({
+                        text: "The plugin will attempt to detect wikilinks inside Statblocks."
+                    });
+                    e.createEl("br");
+                    e.createEl("strong", {
+                        text: "Please note: these links will not be added to the graph."
+                    });
+                }),
+                control: { type: "toggle", key: "tryToRenderLinks" }
+            },
+            {
+                name: "Enable 5e SRD",
+                desc: "Use the Dungeons & Dragons 5th Edition System Reference Document monsters.",
+                control: { type: "toggle", key: "enableSRD" }
+            }
+        ];
+    }
 
-        new Setting(container)
-            .setName("Try to Save Data Atomically")
-            .setDesc(
-                createFragment((e) => {
+    getParseDefinitions(): SettingDefinition[] {
+        let path = "";
+        return [
+            {
+                name: "Automatically Parse Frontmatter for Creatures",
+                desc: createFragment((e) => {
+                    e.createSpan({
+                        text: "The plugin will watch the vault for creatures defined in note frontmatter."
+                    });
+                    e.createEl("br");
+                    e.createEl("br");
+                    e.createSpan({
+                        text: `The "Parse Frontmatter for Creatures" command can also be used.`
+                    });
+                }),
+                aliases: ["frontmatter", "watcher"],
+                control: { type: "toggle", key: "autoParse" }
+            },
+            {
+                name: "Enable Debug Messages",
+                desc: "Debug messages will be displayed by the file parser.",
+                control: { type: "toggle", key: "debug" }
+            },
+            {
+                name: "Bestiary Folder",
+                desc: "The plugin will only parse notes inside these folders and their children.",
+                aliases: ["bestiary folder", "paths"],
+                render: (setting) => {
+                    setting
+                        .addText((text) => {
+                            const folders = this.app.vault
+                                .getAllLoadedFiles()
+                                .filter(
+                                    (f) =>
+                                        f instanceof TFolder &&
+                                        !this.plugin.settings.paths.includes(
+                                            f.path
+                                        )
+                                );
+                            text.setPlaceholder("/");
+                            new FolderInputSuggest(this.app, text, [
+                                ...(folders as TFolder[])
+                            ]).onSelect(async ({ item }) => {
+                                path = normalizePath(item.path);
+                                text.setValue(item.path);
+                            });
+                            text.inputEl.onblur = () => {
+                                path = normalizePath(
+                                    text.inputEl.value?.trim() || "/"
+                                );
+                            };
+                        })
+                        .addExtraButton((b) => {
+                            b.setIcon("plus-with-circle").onClick(async () => {
+                                if (!path?.length) return;
+                                this.plugin.settings.paths.push(
+                                    normalizePath(path)
+                                );
+                                await this.plugin.saveSettings();
+                                await Watcher.reparseVault();
+                                this.refresh();
+                            });
+                        });
+                }
+            },
+            ...this.plugin.settings.paths.map(
+                (folder): SettingDefinition => ({
+                    name: folder,
+                    searchable: false,
+                    render: (setting) => {
+                        setting.addExtraButton((b) =>
+                            b.setIcon("trash").onClick(async () => {
+                                this.plugin.settings.paths =
+                                    this.plugin.settings.paths.filter(
+                                        (p) => p != folder
+                                    );
+                                await this.plugin.saveSettings();
+                                await Watcher.reparseVault();
+                                this.refresh();
+                            })
+                        );
+                    }
+                })
+            )
+        ];
+    }
+
+    getAdvancedDefinitions(): SettingDefinition[] {
+        return [
+            {
+                name: "Try to Save Data Atomically",
+                desc: createFragment((e) => {
                     e.createSpan({
                         text: "This will cause to plugin to save data to a temporary file before saving the actual data file in an attempt to prevent data loss."
                     });
@@ -205,431 +349,475 @@ export default class StatblockSettingTab extends PluginSettingTab {
                         },
                         text: "This setting is currently disabled."
                     });
-                })
-            )
-            .addToggle((t) =>
-                t
-                    .setValue(this.plugin.settings.atomicWrite)
-                    .onChange(async (v) => {
-                        this.plugin.settings.atomicWrite = v;
-                        await this.plugin.saveSettings();
-                    })
-            );
+                }),
+                control: { type: "toggle", key: "atomicWrite" }
+            }
+        ];
     }
 
-    generateTopSettings(container: HTMLElement) {
-        container.empty();
-        /* new Setting(container)
-            .setName("Enable Export to PNG")
-            .setDesc(
-                createFragment((e) => {
-                    e.createSpan({
-                        text: 'Add "Export to PNG" button by default. Use '
-                    });
-                    e.createEl("code", { text: "export: false" });
-                    e.createSpan({
-                        text: " to disable per-statblock."
-                    });
-                })
-            )
-            .setDisabled(!this.plugin.diceRollerInstalled)
-            .addToggle((t) =>
-                t.setValue(this.plugin.settings.useDice).onChange(async (v) => {
-                    this.plugin.settings.useDice = v;
-                    await this.plugin.saveSettings();
-                })
-            ); */
-        new Setting(container)
-            .setName("Integrate Dice Roller")
-            .setDesc(
-                createFragment((e) => {
-                    if (this.plugin.diceRollerInstalled) {
-                        e.createSpan({
-                            text: "Add Dice Roller dice to statblocks by default. Use "
-                        });
-                        e.createEl("code", { text: "dice: false" });
-                        e.createSpan({
-                            text: " to disable per-statblock."
-                        });
-                    } else {
-                        e.createSpan({
-                            text: "This setting is only usable with the Dice Roller plugin enabled."
-                        });
-                    }
-                })
-            )
-            .setDisabled(!this.plugin.diceRollerInstalled)
-            .addToggle((t) =>
-                t.setValue(this.plugin.settings.useDice).onChange(async (v) => {
-                    this.plugin.settings.useDice = v;
-                    await this.plugin.saveSettings();
-                })
-            );
-        new Setting(container)
-            .setName("Render Dice Rolls")
-            .setDesc(
-                createFragment((e) => {
-                    if (this.plugin.diceRollerInstalled) {
-                        e.createSpan({
-                            text: "Roll graphical dice inside statblocks by default. Use "
-                        });
-                        e.createEl("code", { text: "render: false" });
-                        e.createSpan({
-                            text: " to disable per-statblock."
-                        });
-                    } else {
-                        e.createSpan({
-                            text: "This setting is only usable with the Dice Roller plugin enabled."
-                        });
-                    }
-                })
-            )
-            .setDisabled(!this.plugin.diceRollerInstalled)
-            .addToggle((t) =>
-                t
-                    .setValue(this.plugin.settings.renderDice)
-                    .onChange(async (v) => {
-                        this.plugin.settings.renderDice = v;
-                        if (this.plugin.diceRollerInstalled) {
-                            window.DiceRoller.registerSource(
-                                DICE_ROLLER_SOURCE,
-                                {
-                                    shouldRender:
-                                        this.plugin.settings.renderDice,
-                                    showFormula: false,
-                                    showParens: false,
-                                    expectedValue: ExpectedValue.Average
-                                }
-                            );
-                        }
-                        await this.plugin.saveSettings();
-                    })
-            );
-        new Setting(container)
-            .setName("Try to Render Wikilinks")
-            .setDesc(
-                createFragment((e) => {
-                    e.createSpan({
-                        text: "The plugin will attempt to detect wikilinks inside Statblocks."
-                    });
-                    e.createEl("br");
-                    e.createEl("strong", {
-                        text: "Please note: these links will not be added to the graph."
-                    });
-                })
-            )
-            .addToggle((t) =>
-                t
-                    .setValue(this.plugin.settings.tryToRenderLinks)
-                    .onChange(async (v) => {
-                        this.plugin.settings.tryToRenderLinks = v;
-                        await this.plugin.saveSettings();
-                    })
-            );
-        new Setting(container)
-            .setName("Enable 5e SRD")
-            .setDesc(
-                createFragment((e) => {
-                    e.createSpan({
-                        text: "Use the Dungeons & Dragons 5th Edition System Reference Document monsters."
-                    });
-                })
-            )
-            .addToggle((t) =>
-                t
-                    .setValue(!this.plugin.settings.disableSRD)
-                    .onChange(async (v) => {
-                        this.plugin.settings.disableSRD = !v;
-                        await this.plugin.saveSettings();
-                        this.plugin.app.workspace.trigger(
-                            "fantasy-statblocks:srd-change",
-                            v
-                        );
-                    })
-            );
-    }
-    generateParseSettings(containerEl: HTMLElement) {
-        containerEl.empty();
-        const additionalContainer = containerEl.createDiv(
-            "statblock-additional-container"
-        );
-        new Setting(additionalContainer)
-            .setName("Automatically Parse Frontmatter for Creatures")
-            .setDesc(
-                createFragment((e) => {
-                    e.createSpan({
-                        text: "The plugin will watch the vault for creatures defined in note frontmatter."
-                    });
-                    e.createEl("br");
-                    e.createEl("br");
-                    e.createSpan({
-                        text: `The "Parse Frontmatter for Creatures" command can also be used.`
-                    });
-                })
-            )
-            .addToggle((t) => {
-                t.setValue(this.plugin.settings.autoParse).onChange(
-                    async (v) => {
-                        this.plugin.settings.autoParse = v;
-                        if (v) {
-                            Watcher.start();
-                        }
-                        await this.plugin.saveSettings();
-                    }
-                );
-            });
-        new Setting(additionalContainer)
-            .setName("Enable Debug Messages")
-            .setDesc(
-                createFragment((e) => {
-                    e.createSpan({
-                        text: "Debug messages will be displayed by the file parser."
-                    });
-                })
-            )
-            .addToggle((t) =>
-                t.setValue(this.plugin.settings.debug).onChange(async (v) => {
-                    this.plugin.settings.debug = v;
-                    Watcher.setDebug();
-                    await this.plugin.saveSettings();
-                })
-            );
-        let path: string;
-        new Setting(additionalContainer)
-            .setName("Bestiary Folder")
-            .setDesc(
-                "The plugin will only parse notes inside these folders and their children."
-            )
-            .addText(async (text) => {
-                let folders = this.app.vault
-                    .getAllLoadedFiles()
-                    .filter(
-                        (f) =>
-                            f instanceof TFolder &&
-                            !this.plugin.settings.paths.includes(f.path)
-                    );
-
-                text.setPlaceholder("/");
-                const modal = new FolderInputSuggest(this.app, text, [
-                    ...(folders as TFolder[])
-                ]);
-
-                modal.onSelect(async ({ item }) => {
-                    path = normalizePath(item.path);
-                    text.setValue(item.path);
-                });
-
-                text.inputEl.onblur = async () => {
-                    const v = text.inputEl.value?.trim()
-                        ? text.inputEl.value.trim()
-                        : "/";
-                    path = normalizePath(v);
-                };
-            })
-            .addExtraButton((b) => {
-                b.setIcon("plus-with-circle").onClick(async () => {
-                    if (!path || !path.length) return;
-                    this.plugin.settings.paths.push(normalizePath(path));
-                    await this.plugin.saveSettings();
-                    await Watcher.reparseVault();
-                    await this.generateParseSettings(containerEl);
-                });
-            });
-
-        const paths = additionalContainer.createDiv("additional");
-        for (const path of this.plugin.settings.paths) {
-            new Setting(paths).setName(path).addExtraButton((b) =>
-                b.setIcon("trash").onClick(async () => {
-                    this.plugin.settings.paths =
-                        this.plugin.settings.paths.filter((p) => p != path);
-
-                    await this.plugin.saveSettings();
-                    await Watcher.reparseVault();
-                    await this.generateParseSettings(containerEl);
-                })
-            );
-        }
-    }
-    generateLayouts(containerEl: HTMLElement) {
-        containerEl.empty();
-
-        const statblockCreatorContainer = containerEl.createDiv(
-            "statblock-additional-container"
-        );
-        statblockCreatorContainer
-            .createDiv("setting-item")
-            .createDiv()
-            .appendChild(
-                createFragment((el) => {
+    getLayoutDefinitions(): SettingDefinition[] {
+        const layouts = this.plugin.manager.getAllLayouts();
+        return [
+            {
+                name: "About Layouts",
+                searchable: false,
+                desc: createFragment((el) => {
                     el.createSpan({
                         text: "New statblock layouts can be created and managed here. A specific layout can be used for a creature using the "
                     });
                     el.createEl("code", { text: "layout" });
                     el.createSpan({ text: " parameter." });
                 })
-            );
-        const importFile = new Setting(statblockCreatorContainer)
-            .setName("Import From JSON")
-            .setDesc("Import a custom layout from a JSON file.");
-        const inputFile = createEl("input", {
+            },
+            {
+                name: "Import From JSON",
+                desc: "Import a custom layout from a JSON file.",
+                aliases: ["import layout"],
+                render: (setting) => {
+                    this.addFileButton(setting, {
+                        input: "layout",
+                        accept: ".json",
+                        icon: "upload",
+                        onFiles: async (files) => {
+                            await this.importLayouts(files);
+                            this.refresh();
+                        }
+                    });
+                }
+            },
+            {
+                name: "Add New Layout",
+                aliases: ["create layout"],
+                render: (setting) => {
+                    setting.addButton((b) =>
+                        b
+                            .setIcon("plus-with-circle")
+                            .setTooltip("Add New Layout")
+                            .onClick(() => {
+                                const modal = new CreateStatblockModal(
+                                    this.plugin
+                                );
+                                modal.onClose = async () => {
+                                    if (!modal.saved) return;
+                                    const l = this.getDuplicate(modal.layout);
+                                    this.plugin.settings.layouts.push(l);
+                                    this.plugin.manager.addLayout(l);
+                                    await this.plugin.saveSettings();
+                                    this.refresh();
+                                };
+                                modal.open();
+                            })
+                    );
+                }
+            },
+            {
+                name: "Default Layout",
+                desc: "Change the default statblock layout used, if not specified.",
+                control: {
+                    type: "dropdown",
+                    key: "default",
+                    options: Object.fromEntries(
+                        layouts.map(({ id, name }) => [id, name])
+                    )
+                }
+            },
+            {
+                name: "Show Advanced Options",
+                desc: "Show advanced options when editing layout blocks.",
+                control: { type: "toggle", key: "showAdvanced" }
+            },
+            {
+                name: "Restore Default Layouts",
+                visible: () =>
+                    this.plugin.manager
+                        .getAllDefaultLayouts()
+                        .some((f) => f.removed),
+                render: (setting) => {
+                    setting.addButton((b) => {
+                        b.setIcon("rotate-ccw").onClick(async () => {
+                            for (const layout of Object.values(
+                                this.plugin.settings.defaultLayouts
+                            )) {
+                                layout.removed = false;
+                                if (!layout.edited) {
+                                    delete this.plugin.settings.defaultLayouts[
+                                        layout.id
+                                    ];
+                                }
+                            }
+                            await this.plugin.saveSettings();
+                            this.refresh();
+                        });
+                    });
+                }
+            }
+        ];
+    }
+
+    getLayoutListDefinitions(): SettingDefinition[] {
+        const defs: SettingDefinition[] = [];
+        for (const layout of this.plugin.manager.getAllDefaultLayouts()) {
+            if (layout.removed) continue;
+            defs.push({
+                name: layout.name,
+                aliases: ["layout"],
+                render: (setting) => {
+                    setting.addExtraButton((b) => {
+                        b.setIcon("pencil")
+                            .setTooltip("Edit")
+                            .onClick(() => {
+                                const modal = new CreateStatblockModal(
+                                    this.plugin,
+                                    layout
+                                );
+                                modal.onClose = async () => {
+                                    if (!modal.saved) return;
+                                    (modal.layout as DefaultLayout).edited =
+                                        true;
+                                    this.plugin.settings.defaultLayouts[
+                                        layout.id
+                                    ] = modal.layout;
+                                    await this.plugin.saveSettings();
+                                    this.plugin.manager.updateDefaultLayout(
+                                        layout.id,
+                                        modal.layout
+                                    );
+                                    this.refresh();
+                                };
+                                modal.open();
+                            });
+                    });
+                    if (layout.edited) {
+                        setting.addExtraButton((b) =>
+                            b
+                                .setIcon("undo")
+                                .setTooltip("Reset to default")
+                                .onClick(async () => {
+                                    const defLayout = DefaultLayouts.find(
+                                        ({ id }) => id == layout.id
+                                    )!;
+                                    delete this.plugin.settings.defaultLayouts[
+                                        layout.id
+                                    ];
+                                    await this.plugin.saveSettings();
+                                    this.plugin.manager.updateDefaultLayout(
+                                        layout.id,
+                                        defLayout
+                                    );
+                                    this.refresh();
+                                })
+                        );
+                    }
+                    this.addLayoutButtons(setting, layout, async () => {
+                        layout.removed = true;
+                        this.plugin.settings.defaultLayouts[layout.id] = layout;
+                        await this.plugin.saveSettings();
+                        this.refresh();
+                    });
+                }
+            });
+        }
+        for (const layout of this.plugin.settings.layouts) {
+            defs.push({
+                name: layout.name,
+                aliases: ["layout"],
+                render: (setting) => {
+                    setting.addExtraButton((b) => {
+                        b.setIcon("pencil")
+                            .setTooltip("Edit")
+                            .onClick(() => {
+                                const modal = new CreateStatblockModal(
+                                    this.plugin,
+                                    layout
+                                );
+                                modal.onClose = async () => {
+                                    if (!modal.saved) return;
+                                    if (
+                                        DefaultLayouts.find(
+                                            ({ id }) => id == layout.id
+                                        )
+                                    ) {
+                                        (modal.layout as DefaultLayout).edited =
+                                            true;
+                                    }
+                                    this.plugin.settings.layouts.splice(
+                                        this.plugin.settings.layouts.indexOf(
+                                            layout
+                                        ),
+                                        1,
+                                        modal.layout
+                                    );
+                                    await this.plugin.saveSettings();
+                                    this.plugin.manager.updateLayout(
+                                        layout.id,
+                                        modal.layout
+                                    );
+                                    this.refresh();
+                                };
+                                modal.open();
+                            });
+                    });
+                    this.addLayoutButtons(setting, layout, async () => {
+                        this.plugin.settings.layouts =
+                            this.plugin.settings.layouts.filter(
+                                (l) => l.id !== layout.id
+                            );
+                        await this.plugin.saveSettings();
+                        this.plugin.manager.removeLayout(layout.id);
+                        this.refresh();
+                    });
+                }
+            });
+        }
+        return defs;
+    }
+
+    /** Copy, export and delete buttons shared by every layout row. */
+    private addLayoutButtons(
+        setting: Setting,
+        layout: Layout,
+        onDelete: () => Promise<void>
+    ) {
+        setting
+            .addExtraButton((b) => {
+                b.setIcon("duplicate-glyph")
+                    .setTooltip("Create Copy")
+                    .onClick(async () => {
+                        const dupe = this.getDuplicate(layout);
+                        this.plugin.settings.layouts.push(dupe);
+                        await this.plugin.saveSettings();
+                        this.plugin.manager.addLayout(dupe);
+                        this.refresh();
+                    });
+            })
+            .addExtraButton((b) => {
+                b.setIcon("import-glyph")
+                    .setTooltip("Export as JSON")
+                    .onClick(() => {
+                        const link = createEl("a");
+                        const file = new Blob([JSON.stringify(layout)], {
+                            type: "json"
+                        });
+                        const url = URL.createObjectURL(file);
+                        link.href = url;
+                        link.download = `${layout.name}.json`;
+                        link.click();
+                        URL.revokeObjectURL(url);
+                    });
+            })
+            .addExtraButton((b) => {
+                b.setIcon("trash").setTooltip("Delete").onClick(onDelete);
+            });
+    }
+
+    /** Adds a button to `setting` that opens a hidden multi-file input. */
+    private addFileButton(
+        setting: Setting,
+        opts: {
+            input: string;
+            accept: string;
+            onFiles: (files: FileList) => Promise<void>;
+            icon?: string;
+            text?: string;
+            tooltip?: string;
+        }
+    ) {
+        const input = createEl("input", {
             attr: {
                 type: "file",
-                name: "layout",
-                accept: ".json",
+                name: opts.input,
+                accept: opts.accept,
                 multiple: true
             }
         });
-        inputFile.onchange = async () => {
-            const { files } = inputFile;
+        input.onchange = async () => {
+            const { files } = input;
             if (!files?.length) return;
             try {
-                const { files } = inputFile;
-                if (!files?.length) return;
-                for (const file of Array.from(files)) {
-                    await new Promise<void>((resolve, reject) => {
-                        const reader = new FileReader();
-
-                        reader.onload = async (event) => {
-                            try {
-                                const layout: Layout = JSON.parse(
-                                    event.target?.result as string
-                                );
-                                if (!layout) {
-                                    reject(
-                                        new Error("Invalid layout imported")
-                                    );
-                                    return;
-                                }
-                                if (!layout?.name) {
-                                    reject(
-                                        new Error(
-                                            "Invalid layout imported: layout does not have a name"
-                                        )
-                                    );
-                                    return;
-                                }
-
-                                if (!layout?.blocks) {
-                                    reject(
-                                        new Error(
-                                            "Invalid layout imported: no blocks defined in layout."
-                                        )
-                                    );
-                                    return;
-                                }
-                                if (!layout.diceParsing) {
-                                    layout.diceParsing = [];
-                                }
-
-                                layout.id = nanoid();
-
-                                if (
-                                    !this.plugin.settings.alwaysImport &&
-                                    layout.blocks.find(
-                                        (b) => b.type == "javascript"
-                                    ) &&
-                                    !(await confirm(this.plugin))
-                                ) {
-                                    resolve();
-                                }
-                                this.plugin.settings.layouts.push(
-                                    this.getDuplicate(layout)
-                                );
-                                resolve();
-                            } catch (e) {
-                                reject(e);
-                            }
-                        };
-                        reader.readAsText(file);
-                    }).catch((e) => {
-                        new Notice(
-                            `There was an error importing the layout: \n\n${e}`
-                        );
-                        console.error(e);
-                    });
-                }
-                await this.plugin.saveSettings();
-                inputFile.value = "";
-                this.buildCustomLayouts(layoutContainer, containerEl);
-            } catch (e) {}
+                await opts.onFiles(files);
+            } catch (e) {
+                console.error(e);
+            }
+            input.value = "";
         };
-
-        importFile.addButton((b) => {
-            b.setIcon("upload");
+        setting.addButton((b) => {
+            if (opts.icon) b.setIcon(opts.icon);
+            if (opts.text) b.setButtonText(opts.text);
+            if (opts.tooltip) b.setTooltip(opts.tooltip);
             b.buttonEl.addClass("statblock-file-upload");
-            b.buttonEl.appendChild(inputFile);
-            b.onClick(() => inputFile.click());
+            b.buttonEl.appendChild(input);
+            b.onClick(() => input.click());
         });
-        new Setting(statblockCreatorContainer)
-            .setName("Add New Layout")
-            .addButton((b) =>
-                b
-                    .setIcon("plus-with-circle")
-                    .setTooltip("Add New Layout")
-                    .onClick(() => {
-                        const modal = new CreateStatblockModal(this.plugin);
-                        modal.onClose = async () => {
-                            if (!modal.saved) return;
-                            const l = this.getDuplicate(modal.layout);
-                            this.plugin.settings.layouts.push(l);
-                            this.plugin.manager.addLayout(l);
-                            await this.plugin.saveSettings();
-                            this.buildCustomLayouts(
-                                layoutContainer,
-                                containerEl
-                            );
-                        };
-                        modal.open();
-                    })
-            );
+    }
 
-        const statblockAdditional =
-            statblockCreatorContainer.createDiv("additional");
-        new Setting(statblockAdditional)
-            .setName("Default Layout")
-            .setDesc(
-                "Change the default statblock layout used, if not specified."
-            )
-            .addDropdown(async (d) => {
-                for (const layout of this.plugin.manager.getAllLayouts()) {
-                    d.addOption(layout.id, layout.name);
+    private async importLayouts(files: FileList) {
+        for (const file of Array.from(files)) {
+            try {
+                const layout: Layout = JSON.parse(await file.text());
+                if (!layout) {
+                    throw new Error("Invalid layout imported");
                 }
+                if (!layout.name) {
+                    throw new Error(
+                        "Invalid layout imported: layout does not have a name"
+                    );
+                }
+                if (!layout.blocks) {
+                    throw new Error(
+                        "Invalid layout imported: no blocks defined in layout."
+                    );
+                }
+                if (!layout.diceParsing) {
+                    layout.diceParsing = [];
+                }
+                layout.id = nanoid();
 
                 if (
-                    !this.plugin.settings.default ||
-                    !this.plugin.manager
-                        .getAllLayouts()
-                        .find(({ id }) => id == this.plugin.settings.default)
+                    !this.plugin.settings.alwaysImport &&
+                    layout.blocks.find((b) => b.type == "javascript") &&
+                    !(await confirm(this.plugin))
                 ) {
-                    this.plugin.settings.default = Layout5e.id;
-                    await this.plugin.saveSettings();
+                    continue;
                 }
-
-                d.setValue(this.plugin.settings.default ?? Layout5e.id);
-
-                d.onChange(async (v) => {
-                    this.plugin.settings.default = v;
-                    this.plugin.manager.setDefaultLayout(v);
-                    await this.plugin.saveSettings();
-                });
-            });
-        new Setting(statblockAdditional)
-            .setName("Show Advanced Options")
-            .setDesc("Show advanced options when editing layout blocks.")
-            .addToggle((t) =>
-                t
-                    .setValue(this.plugin.settings.showAdvanced)
-                    .onChange(async (v) => {
-                        this.plugin.settings.showAdvanced = v;
-                        await this.plugin.saveSettings();
-                    })
-            );
-
-        const layoutContainer =
-            statblockCreatorContainer.createDiv("additional");
-
-        this.buildCustomLayouts(layoutContainer, containerEl);
+                this.plugin.settings.layouts.push(this.getDuplicate(layout));
+            } catch (e) {
+                new Notice(`There was an error importing the layout: \n\n${e}`);
+                console.error(e);
+            }
+        }
+        await this.plugin.saveSettings();
     }
+
+    getImportDefinitions(): SettingDefinition[] {
+        return [
+            {
+                name: "About Importing",
+                searchable: false,
+                desc: "Import creatures from creature files. Monsters are stored by name, so only the last creature by that name will be saved. This is destructive - any saved creature will be overwritten."
+            },
+            ...IMPORTERS.map(
+                (importer): SettingDefinition => ({
+                    name: importer.name,
+                    desc: importer.desc,
+                    aliases: ["import"],
+                    render: (setting) => {
+                        this.addFileButton(setting, {
+                            input: importer.input,
+                            accept: importer.accept,
+                            text: "Choose File(s)",
+                            tooltip: importer.tooltip,
+                            onFiles: async (files) => {
+                                const monsters = await this.importer.import(
+                                    files,
+                                    importer.source as never
+                                );
+                                if (monsters && monsters.length) {
+                                    await this.plugin.saveMonsters(monsters);
+                                }
+                                this.refresh();
+                            }
+                        });
+                    }
+                })
+            )
+        ];
+    }
+
+    getBestiaryDefinitions(): SettingDefinition[] {
+        return [
+            {
+                name: "Add Creature",
+                aliases: ["new creature"],
+                render: (setting) => {
+                    setting.addButton((b) => {
+                        b.setIcon("plus-with-circle").onClick(() => {
+                            const modal = new EditMonsterModal(this.plugin);
+                            modal.onClose = () => this.refresh();
+                            modal.open();
+                        });
+                    });
+                }
+            },
+            {
+                name: "Saved Creatures",
+                desc: "Browse, edit, and remove saved creatures.",
+                aliases: ["monsters", "creatures", "bestiary"],
+                render: (setting) => {
+                    setting.settingEl.addClass("statblock-creatures-setting");
+                    const ancestor =
+                        setting.settingEl.closest(".statblock-settings") ??
+                        this.containerEl;
+                    const { backgroundColor, paddingTop } =
+                        getComputedStyle(ancestor);
+                    this.$UI = mount(Creatures, {
+                        target: setting.settingEl,
+                        props: {
+                            plugin: this.plugin,
+                            backgroundColor,
+                            paddingTop
+                        }
+                    });
+                    return () => {
+                        if (this.$UI) unmount(this.$UI);
+                        this.$UI = undefined;
+                    };
+                }
+            }
+        ];
+    }
+
+    getControlValue(key: string): unknown {
+        const settings = this.plugin.settings;
+        if (key === "enableSRD") return !settings.disableSRD;
+        if (key === "default") {
+            const layouts = this.plugin.manager.getAllLayouts();
+            return layouts.some(({ id }) => id == settings.default)
+                ? settings.default
+                : Layout5e.id;
+        }
+        return (settings as unknown as Record<string, unknown>)[key];
+    }
+
+    async setControlValue(key: string, value: unknown): Promise<void> {
+        const settings = this.plugin.settings;
+        switch (key) {
+            case "enableSRD":
+                settings.disableSRD = !value;
+                await this.plugin.saveSettings();
+                this.plugin.app.workspace.trigger(
+                    "fantasy-statblocks:srd-change",
+                    value
+                );
+                return;
+            case "renderDice":
+                settings.renderDice = value as boolean;
+                if (this.plugin.diceRollerInstalled) {
+                    window.DiceRoller.registerSource(DICE_ROLLER_SOURCE, {
+                        shouldRender: settings.renderDice,
+                        showFormula: false,
+                        showParens: false,
+                        expectedValue: ExpectedValue.Average
+                    });
+                }
+                break;
+            case "autoParse":
+                settings.autoParse = value as boolean;
+                if (value) Watcher.start();
+                break;
+            case "debug":
+                settings.debug = value as boolean;
+                Watcher.setDebug();
+                break;
+            case "default":
+                settings.default = value as string;
+                this.plugin.manager.setDefaultLayout(value as string);
+                break;
+            default:
+                (settings as unknown as Record<string, unknown>)[key] = value;
+        }
+        await this.plugin.saveSettings();
+    }
+
     getDuplicate(layout: Layout): Layout {
         if (
             !this.plugin.manager
@@ -655,508 +843,6 @@ export default class StatblockSettingTab extends PluginSettingTab {
             id: nanoid()
         };
     }
-    buildCustomLayouts(
-        layoutContainer: HTMLDivElement,
-        outerContainer: HTMLElement
-    ) {
-        layoutContainer.empty();
-
-        if (this.plugin.manager.getAllDefaultLayouts().some((f) => f.removed)) {
-            new Setting(layoutContainer)
-                .setName("Restore Default Layouts")
-                .addButton((b) => {
-                    b.setIcon("rotate-ccw").onClick(async () => {
-                        for (const layout of Object.values(
-                            this.plugin.settings.defaultLayouts
-                        )) {
-                            layout.removed = false;
-                            if (!layout.edited) {
-                                delete this.plugin.settings.defaultLayouts[
-                                    layout.id
-                                ];
-                            }
-                        }
-                        await this.plugin.saveSettings();
-                        this.generateLayouts(outerContainer);
-                    });
-                });
-        }
-        for (const layout of this.plugin.manager.getAllDefaultLayouts()) {
-            if (layout.removed) continue;
-
-            const setting = new Setting(layoutContainer)
-                .setName(layout.name)
-                .addExtraButton((b) => {
-                    b.setIcon("pencil")
-                        .setTooltip("Edit")
-                        .onClick(() => {
-                            const modal = new CreateStatblockModal(
-                                this.plugin,
-                                layout
-                            );
-                            modal.onClose = async () => {
-                                if (!modal.saved) return;
-
-                                (modal.layout as DefaultLayout).edited = true;
-                                this.plugin.settings.defaultLayouts[layout.id] =
-                                    modal.layout;
-
-                                await this.plugin.saveSettings();
-                                this.plugin.manager.updateDefaultLayout(
-                                    layout.id,
-                                    modal.layout
-                                );
-                                this.generateLayouts(outerContainer);
-                            };
-                            modal.open();
-                        });
-                });
-            if (layout.edited) {
-                setting.addExtraButton((b) =>
-                    b.setIcon("undo").onClick(async () => {
-                        const defLayout = DefaultLayouts.find(
-                            ({ id }) => id == layout.id
-                        )!;
-                        delete this.plugin.settings.defaultLayouts[layout.id];
-                        await this.plugin.saveSettings();
-                        this.plugin.manager.updateDefaultLayout(
-                            layout.id,
-                            defLayout
-                        );
-                        this.generateLayouts(outerContainer);
-                    })
-                );
-            }
-
-            setting
-                .addExtraButton((b) => {
-                    b.setIcon("duplicate-glyph")
-                        .setTooltip("Create Copy")
-                        .onClick(async () => {
-                            const dupe = this.getDuplicate(layout);
-                            this.plugin.settings.layouts.push(dupe);
-                            await this.plugin.saveSettings();
-                            this.plugin.manager.addLayout(dupe);
-
-                            this.buildCustomLayouts(
-                                layoutContainer,
-                                outerContainer
-                            );
-                        });
-                })
-                .addExtraButton((b) => {
-                    b.setIcon("import-glyph")
-                        .setTooltip("Export as JSON")
-                        .onClick(() => {
-                            const link = createEl("a");
-                            const file = new Blob([JSON.stringify(layout)], {
-                                type: "json"
-                            });
-                            const url = URL.createObjectURL(file);
-                            link.href = url;
-                            link.download = `${layout.name}.json`;
-                            link.click();
-                            URL.revokeObjectURL(url);
-                        });
-                })
-                .addExtraButton((b) => {
-                    b.setIcon("trash")
-                        .setTooltip("Delete")
-                        .onClick(async () => {
-                            layout.removed = true;
-                            this.plugin.settings.defaultLayouts[layout.id] =
-                                layout;
-                            await this.plugin.saveSettings();
-                            this.generateLayouts(outerContainer);
-                        });
-                });
-        }
-        for (const layout of this.plugin.settings.layouts) {
-            new Setting(layoutContainer)
-                .setName(layout.name)
-                .addExtraButton((b) => {
-                    b.setIcon("pencil")
-                        .setTooltip("Edit")
-                        .onClick(() => {
-                            const modal = new CreateStatblockModal(
-                                this.plugin,
-                                layout
-                            );
-                            modal.onClose = async () => {
-                                if (!modal.saved) return;
-                                if (
-                                    DefaultLayouts.find(
-                                        ({ id }) => id == layout.id
-                                    )
-                                ) {
-                                    (modal.layout as DefaultLayout).edited =
-                                        true;
-                                }
-                                this.plugin.settings.layouts.splice(
-                                    this.plugin.settings.layouts.indexOf(
-                                        layout
-                                    ),
-                                    1,
-                                    modal.layout
-                                );
-
-                                await this.plugin.saveSettings();
-                                this.plugin.manager.updateLayout(
-                                    layout.id,
-                                    modal.layout
-                                );
-                                this.generateLayouts(outerContainer);
-                            };
-                            modal.open();
-                        });
-                })
-                .addExtraButton((b) => {
-                    b.setIcon("duplicate-glyph")
-                        .setTooltip("Create Copy")
-                        .onClick(async () => {
-                            const dupe = this.getDuplicate(layout);
-                            this.plugin.settings.layouts.push(dupe);
-                            await this.plugin.saveSettings();
-                            this.plugin.manager.addLayout(dupe);
-                            this.buildCustomLayouts(
-                                layoutContainer,
-                                outerContainer
-                            );
-                        });
-                })
-                .addExtraButton((b) => {
-                    b.setIcon("import-glyph")
-                        .setTooltip("Export as JSON")
-                        .onClick(() => {
-                            const link = createEl("a");
-                            const file = new Blob([JSON.stringify(layout)], {
-                                type: "json"
-                            });
-                            const url = URL.createObjectURL(file);
-                            link.href = url;
-                            link.download = `${layout.name}.json`;
-                            link.click();
-                            URL.revokeObjectURL(url);
-                        });
-                })
-                .addExtraButton((b) => {
-                    b.setIcon("trash")
-                        .setTooltip("Delete")
-                        .onClick(async () => {
-                            this.plugin.settings.layouts =
-                                this.plugin.settings.layouts.filter(
-                                    (l) => l.id !== layout.id
-                                );
-                            await this.plugin.saveSettings();
-                            this.plugin.manager.removeLayout(layout.id);
-
-                            this.generateLayouts(outerContainer);
-                        });
-                });
-        }
-    }
-
-    generateImports(containerEl: HTMLElement) {
-        containerEl.empty();
-        const importSettingsContainer = containerEl.createDiv(
-            "statblock-additional-container"
-        );
-
-        new Setting(importSettingsContainer).setDesc(
-            "Import creatures from creature files. Monsters are stored by name, so only the last creature by that name will be saved. This is destructive - any saved creature will be overwritten."
-        );
-
-        const importAdditional =
-            importSettingsContainer.createDiv("additional");
-        const importAppFile = new Setting(importAdditional)
-            .setName("Import DnDAppFile")
-            .setDesc("Only import content that you own.");
-        const inputAppFile = createEl("input", {
-            attr: {
-                type: "file",
-                name: "dndappfile",
-                accept: ".xml",
-                multiple: true
-            }
-        });
-
-        inputAppFile.onchange = async () => {
-            const { files } = inputAppFile;
-            if (!files?.length) return;
-            try {
-                const { files } = inputAppFile;
-                if (!files?.length) return;
-                const monsters = await this.importer.import(files, "appfile");
-                if (monsters && monsters.length) {
-                    await this.plugin.saveMonsters(monsters);
-                }
-                this.display();
-            } catch (e) {}
-        };
-
-        importAppFile.addButton((b) => {
-            b.setButtonText("Choose File(s)").setTooltip(
-                "Import DnDAppFile Data"
-            );
-            b.buttonEl.addClass("statblock-file-upload");
-            b.buttonEl.appendChild(inputAppFile);
-            b.onClick(() => inputAppFile.click());
-        });
-
-        const importImprovedInitiative = new Setting(importAdditional)
-            .setName("Import Improved Initiative Data")
-            .setDesc("Only import content that you own.");
-        const inputImprovedInitiative = createEl("input", {
-            attr: {
-                type: "file",
-                name: "improvedinitiative",
-                accept: ".json",
-                multiple: true
-            }
-        });
-
-        inputImprovedInitiative.onchange = async () => {
-            const { files } = inputImprovedInitiative;
-            if (!files?.length) return;
-            try {
-                const { files } = inputImprovedInitiative;
-                if (!files?.length) return;
-                const monsters = await this.importer.import(files, "improved");
-                if (monsters && monsters.length) {
-                    await this.plugin.saveMonsters(monsters);
-                }
-                this.display();
-            } catch (e) {}
-        };
-
-        importImprovedInitiative.addButton((b) => {
-            b.setButtonText("Choose File(s)").setTooltip(
-                "Import Improved Initiative Data"
-            );
-            b.buttonEl.addClass("statblock-file-upload");
-            b.buttonEl.appendChild(inputImprovedInitiative);
-            b.onClick(() => inputImprovedInitiative.click());
-        });
-
-        const importCritterDB = new Setting(importAdditional)
-            .setName("Import CritterDB Data")
-            .setDesc("Only import content that you own.");
-        const inputCritterDB = createEl("input", {
-            attr: {
-                type: "file",
-                name: "critterdb",
-                accept: ".json",
-                multiple: true
-            }
-        });
-
-        inputCritterDB.onchange = async () => {
-            const { files } = inputCritterDB;
-            if (!files?.length) return;
-            try {
-                const { files } = inputCritterDB;
-                if (!files?.length) return;
-                const monsters = await this.importer.import(files, "critter");
-                if (monsters && monsters.length) {
-                    await this.plugin.saveMonsters(monsters);
-                }
-                this.display();
-            } catch (e) {}
-        };
-
-        importCritterDB.addButton((b) => {
-            b.setButtonText("Choose File(s)").setTooltip(
-                "Import CritterDB Data"
-            );
-            b.buttonEl.addClass("statblock-file-upload");
-            b.buttonEl.appendChild(inputCritterDB);
-            b.onClick(() => inputCritterDB.click());
-        });
-
-        const import5eTools = new Setting(importAdditional)
-            .setName("Import 5e.tools Data")
-            .setDesc("Only import content that you own.");
-        const input5eTools = createEl("input", {
-            attr: {
-                type: "file",
-                name: "fivetools",
-                accept: ".json",
-                multiple: true
-            }
-        });
-
-        input5eTools.onchange = async () => {
-            const { files } = input5eTools;
-            if (!files?.length) return;
-            const monsters = await this.importer.import(files, "5e");
-            if (monsters && monsters.length) {
-                await this.plugin.saveMonsters(monsters);
-            }
-            this.display();
-        };
-
-        import5eTools.addButton((b) => {
-            b.setButtonText("Choose File(s)").setTooltip(
-                "Import 5e.tools Data"
-            );
-            b.buttonEl.addClass("statblock-file-upload");
-            b.buttonEl.appendChild(input5eTools);
-            b.onClick(() => input5eTools.click());
-        });
-        const importTetra = new Setting(importAdditional)
-            .setName("Import TetraCube Data")
-            .setDesc("Only import content that you own.");
-        const inputTetra = createEl("input", {
-            attr: {
-                type: "file",
-                name: "tetra",
-                accept: ".json, .monster",
-                multiple: true
-            }
-        });
-        inputTetra.onchange = async () => {
-            const { files } = inputTetra;
-            if (!files?.length) return;
-            const monsters = await this.importer.import(files, "tetra");
-            if (monsters && monsters.length) {
-                await this.plugin.saveMonsters(monsters);
-            }
-            this.display();
-        };
-        importTetra.addButton((b) => {
-            b.setButtonText("Choose File(s)").setTooltip(
-                "Import TetraCube Data"
-            );
-            b.buttonEl.addClass("statblock-file-upload");
-            b.buttonEl.appendChild(inputTetra);
-            b.onClick(() => inputTetra.click());
-        });
-        const importPF2EMonsterTools = new Setting(importAdditional)
-            .setName("Import PF2eMonsterTools Data")
-            .setDesc("Only import content that you own.");
-        const inputPF2EMonsterTools = createEl("input", {
-            attr: {
-                type: "file",
-                name: "PF2eMonsterTool",
-                accept: ".json, .monster",
-                multiple: true
-            }
-        });
-        inputPF2EMonsterTools.onchange = async () => {
-            const { files } = inputPF2EMonsterTools;
-            if (!files?.length) return;
-            const monsters = await this.importer.import(files, "PF2eMonsterTool");
-            if (monsters && monsters.length) {
-                await this.plugin.saveMonsters(monsters);
-            }
-            this.display();
-        };
-        importPF2EMonsterTools.addButton((b) => {
-            b.setButtonText("Choose File(s)").setTooltip(
-                "Import PF2EMonsterTools Data"
-            );
-            b.buttonEl.addClass("statblock-file-upload");
-            b.buttonEl.appendChild(inputPF2EMonsterTools);
-            b.onClick(() => inputPF2EMonsterTools.click());
-        });
-        // import Pathbuilder
-        const importPathbuilder = new Setting(importAdditional)
-            .setName("Import Pathbuilder Data")
-            .setDesc("Import a PC or NPC exported from Pathbuilder2e.");
-        const inputPathbuilder = createEl("input", {
-            attr: {
-                type: "file",
-                name: "pathbuilder",
-                accept: ".json",
-                multiple: true
-            }
-        });
-        inputPathbuilder.onchange = async () => {
-            const { files } = inputPathbuilder;
-            if (!files?.length) return;
-            const monsters = await this.importer.import(files, "pathbuilder");
-            if (monsters && monsters.length) {
-                await this.plugin.saveMonsters(monsters);
-            }
-            this.display();
-        };
-        importPathbuilder.addButton((b) => {
-            b.setButtonText("Choose File(s)").setTooltip(
-                "Import Pathbuilder Data"
-            );
-            b.buttonEl.addClass("statblock-file-upload");
-            b.buttonEl.appendChild(inputPathbuilder);
-            b.onClick(() => inputPathbuilder.click());
-        });
-
-
-
-        const importGeneric = new Setting(importAdditional)
-            .setName("Import Generic Data")
-            .setDesc(
-                createFragment((e) => {
-                    e.createSpan({
-                        text: "Import generic JSON files. JSON objects will be imported "
-                    });
-                    e.createEl("strong", { text: "as-is" });
-                    e.createSpan({ text: " and all objects must have the " });
-                    e.createEl("code", { text: "name" });
-                    e.createSpan({ text: " property." });
-                })
-            );
-        const inputGeneric = createEl("input", {
-            attr: {
-                type: "file",
-                name: "generic",
-                accept: ".json, .monster",
-                multiple: true
-            }
-        });
-        inputGeneric.onchange = async () => {
-            const { files } = inputGeneric;
-            if (!files?.length) return;
-            const monsters = await this.importer.import(files, "generic");
-            if (monsters && monsters.length) {
-                await this.plugin.saveMonsters(monsters);
-            }
-            this.display();
-        };
-        importGeneric.addButton((b) => {
-            b.setButtonText("Choose File(s)").setTooltip("Import Generic Data");
-            b.buttonEl.addClass("statblock-file-upload");
-            b.buttonEl.appendChild(inputGeneric);
-            b.onClick(() => inputGeneric.click());
-        });
-    }
-    generateMonsters(containerEl: HTMLElement) {
-        containerEl.empty();
-        const additionalContainer = containerEl.createDiv(
-            "statblock-additional-container statblock-monsters"
-        );
-        new Setting(additionalContainer)
-            .setName("Add Creature")
-            .addButton((b) => {
-                b.setIcon("plus-with-circle").onClick(() => {
-                    const modal = new EditMonsterModal(this.plugin);
-                    modal.onClose = () => {
-                        this.generateMonsters(containerEl);
-                    };
-                    modal.open();
-                });
-            });
-
-        const ancestor = this.containerEl.closest(".statblock-settings")!;
-        const { backgroundColor, paddingTop } = getComputedStyle(ancestor);
-
-        this.$UI = mount(Creatures, {
-            target: additionalContainer,
-            props: {
-                plugin: this.plugin,
-                backgroundColor,
-                paddingTop
-            }
-        });
-    }
     override hide() {
         if (this.$UI) unmount(this.$UI);
         this.$UI = undefined;
@@ -1177,12 +863,15 @@ class CreateStatblockModal extends FantasyStatblockModal {
     ) {
         super(plugin);
         this.layout = fastCopy(layout);
-        this.modalEl.addClasses([
-            "mod-sidebar-layout",
-            "mod-settings",
-            "statblock-layout-editor-modal"
-        ]);
-        this.contentEl.addClass("vertical-tabs-container");
+        this.modalEl.addClass("statblock-layout-editor-modal");
+        if (Platform.isMobile) {
+            /** The sidebar/settings modal styles assume the desktop two-pane
+             * layout and render blank with the single-column mobile editor. */
+            this.modalEl.addClass("is-mobile-editor");
+        } else {
+            this.modalEl.addClasses(["mod-sidebar-layout", "mod-settings"]);
+            this.contentEl.addClass("vertical-tabs-container");
+        }
     }
 
     onOpen() {
@@ -1212,7 +901,10 @@ class CreateStatblockModal extends FantasyStatblockModal {
 
 class ConfirmModal extends FantasyStatblockModal {
     saved: boolean = false;
-    constructor(public filtered: number, plugin: StatBlockPlugin) {
+    constructor(
+        public filtered: number,
+        plugin: StatBlockPlugin
+    ) {
         super(plugin);
     }
     onOpen() {
