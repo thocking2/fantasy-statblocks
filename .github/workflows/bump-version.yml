@@ -1,0 +1,46 @@
+name: Bump version
+
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: "Version bump (patch, minor, or major)"
+                default: patch
+                type: choice
+                options:
+                    - patch
+                    - minor
+                    - major
+
+permissions:
+    contents: write
+    actions: write
+
+jobs:
+    bump:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: npm
+            - run: npm ci
+            - name: Configure git
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+            # Obsidian requires tags without a "v" prefix.
+            - name: Bump version, commit, and tag
+              run: npm version "${{ inputs.version }}" --tag-version-prefix=""
+            - name: Push commit and tag
+              run: git push --follow-tags
+            # Pushes made with GITHUB_TOKEN don't trigger other workflows.
+            - name: Trigger release workflow
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  tag=$(git describe --tags --abbrev=0)
+                  gh workflow run release.yml --ref "$tag"
