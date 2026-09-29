@@ -239,3 +239,9 @@ body.is-mobile .modal.statblock-layout-editor-modal > .vertical-tabs-container {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
+
+/** Bestiary browser: let the creature list use the full row width */
+.setting-item.statblock-creatures-setting {
+    display: block;
+    border-top: 0;
+}
