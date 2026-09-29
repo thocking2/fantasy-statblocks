@@ -2,7 +2,7 @@
     import {
         ButtonComponent,
         ExtraButtonComponent,
-        Platform,
+        setIcon,
         TextComponent
     } from "obsidian";
 
@@ -30,8 +30,6 @@
         "Advanced",
         "Previewer"
     ] as const;
-    let SelectedSection: (typeof SettingsSections)[number] =
-        SettingsSections[0];
 
     let editingName = false;
     const name = (node: HTMLElement) => {
@@ -79,13 +77,19 @@
                 dispatch("saved");
             });
     };
-    const cancel = (node: HTMLDivElement) => {
+
+    /** Mobile: null shows the section list, otherwise the selected submenu. */
+    let mobileSection: (typeof SettingsSections)[number] | null = null;
+    const back = (node: HTMLElement) => {
         new ExtraButtonComponent(node)
-            .setIcon("cross")
-            .setTooltip("Cancel")
+            .setIcon("chevron-left")
+            .setTooltip("Back")
             .onClick(() => {
-                dispatch("cancel");
+                mobileSection = null;
             });
+    };
+    const chevron = (node: HTMLElement) => {
+        setIcon(node, "chevron-right");
     };
 
     const style = derived(store, (layout) => {
@@ -96,70 +100,72 @@
 {@html `<style>
         ${$style.join("\n")}
     </style>`}
-{#if !Platform.isMobile}
-    <div class="vertical-tab-header">
-        <div class="vertical-tab-header-group">
-            <h3>Layout Editor</h3>
-
-            <div class="name" use:name />
-            <div class="vertical-tab-header-group-items">
+    <div class="statblock-mobile">
+        {#if mobileSection === null}
+            <div class="top">
+                <div class="name" use:name />
+                <div class="buttons">
+                    <div class="save" use:save />
+                </div>
+            </div>
+            <div class="mobile-menu">
                 {#each SettingsSections as SECTION}
                     <div
-                        class="vertical-tab-nav-item"
-                        class:is-active={SelectedSection === SECTION}
-                        on:click={() => (SelectedSection = SECTION)}
+                        class="mobile-menu-item"
+                        on:click={() => (mobileSection = SECTION)}
                     >
-                        {SECTION}
+                        <span>{SECTION}</span>
+                        <span class="chevron" use:chevron />
                     </div>
                 {/each}
             </div>
-        </div>
-        <div class="bottom">
-            <div class="save" use:save />
-            <div class="cancel" use:cancel />
-        </div>
-    </div>
-    <div
-        class="vertical-tab-content-container {SelectedSection.toLowerCase()}s"
-    >
-        <div class="vertical-tab-content">
-            {#if SelectedSection === "General"}
-                <Blocks />
-            {/if}
-            {#if SelectedSection === "Appearance"}
-                <Appearance />
-            {/if}
-            {#if SelectedSection === "Advanced"}
-                <Advanced />
-            {/if}
-            {#if SelectedSection === "Previewer"}
-                <Previewer
-                    {previewed}
-                    on:update={(ev) => (previewed = ev.detail)}
-                />
-            {/if}
-        </div>
-    </div>
-{:else}
-    <!-- TODO: Mimic Obsidian Mobile settings view -->
-    <div class="statblock-mobile">
-        <div class="top">
-            <div class="name" use:name />
-            <div class="buttons">
-                <div class="save" use:save />
-                <div class="cancel" use:cancel />
+        {:else}
+            <div class="top">
+                <div class="name">
+                    <div class="back" use:back />
+                    <h5>{mobileSection}</h5>
+                </div>
+                <div class="buttons">
+                    <div class="save" use:save />
+                </div>
             </div>
-        </div>
-        <Advanced />
-        <Blocks />
+            <div class="mobile-section {mobileSection.toLowerCase()}s">
+                {#if mobileSection === "General"}
+                    <Blocks />
+                {:else if mobileSection === "Appearance"}
+                    <Appearance />
+                {:else if mobileSection === "Advanced"}
+                    <Advanced />
+                {:else if mobileSection === "Previewer"}
+                    <Previewer
+                        {previewed}
+                        on:update={(ev) => (previewed = ev.detail)}
+                    />
+                {/if}
+            </div>
+        {/if}
     </div>
-{/if}
 
 <style scoped>
     .statblock-mobile {
         display: flex;
         flex-flow: column;
         gap: 0.25rem;
+    }
+    .mobile-menu {
+        display: flex;
+        flex-flow: column;
+    }
+    .mobile-menu-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--size-4-3) var(--size-4-4);
+        border-bottom: 1px solid var(--background-modifier-border);
+        cursor: pointer;
+    }
+    .mobile-section.previewers {
+        min-height: 60vh;
     }
     .top {
         display: flex;
@@ -180,18 +186,5 @@
         display: flex;
         justify-content: flex-end;
         align-items: center;
-    }
-    .vertical-tab-header {
-        display: flex;
-        flex-flow: column nowrap;
-    }
-    .vertical-tab-content {
-        padding: var(--size-4-8);
-    }
-    .bottom {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        margin-top: auto;
     }
 </style>
