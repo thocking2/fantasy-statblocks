@@ -5,7 +5,6 @@ import {
     Notice,
     PluginSettingTab,
     SettingPage,
-    setIcon,
     Setting,
     TFolder,
     type SettingDefinition,
@@ -330,20 +329,11 @@ export default class StatblockSettingTab extends PluginSettingTab {
                 name: "Try to Save Data Atomically",
                 desc: createFragment((e) => {
                     e.createSpan({
-                        text: "This will cause to plugin to save data to a temporary file before saving the actual data file in an attempt to prevent data loss."
+                        text: "This will cause the plugin to save data to a temporary file before saving the actual data file in an attempt to prevent data loss."
                     });
                     e.createEl("br");
                     e.createSpan({
                         text: "This can cause issues sometimes when using sync services."
-                    });
-                    e.createEl("br");
-                    const warning = e.createDiv();
-                    setIcon(warning.createDiv(), "warning");
-                    warning.createSpan({
-                        attr: {
-                            style: "color: var(--text-error)"
-                        },
-                        text: "This setting is currently disabled."
                     });
                 }),
                 control: { type: "toggle", key: "atomicWrite" }

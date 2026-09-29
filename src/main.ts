@@ -313,27 +313,44 @@ export default class StatBlockPlugin extends Plugin {
     async loadData(): Promise<StatblockData> {
         return (await super.loadData()) as StatblockData;
     }
+    #saveQueue: Promise<void> = Promise.resolve();
     async saveData(settings: StatblockData) {
-        /* if (this.settings.atomicWrite) {
+        // serialize writes so concurrent saves never share the temp file
+        const run = this.#saveQueue.then(() => this.#write(settings));
+        this.#saveQueue = run.catch(() => {});
+        return run;
+    }
+    async #write(settings: StatblockData) {
+        if (!this.settings?.atomicWrite || !this.manifest.dir) {
+            return await super.saveData(settings);
+        }
+        const adapter = this.app.vault.adapter;
+        const dir = this.manifest.dir;
+        const temp = `${dir}/data.json.tmp`;
+        const target = `${dir}/data.json`;
+        try {
+            // write the full payload to a temp file first
+            await adapter.write(temp, JSON.stringify(settings, null, 2));
+            // then swap it in; a crash mid-write only ever hurts the temp file
             try {
-                await this.app.vault.adapter.write(
-                    `${this.manifest.dir}/temp.json`,
-                    JSON.stringify(settings, null, null)
-                );
-
-                await this.app.vault.adapter.remove(
-                    `${this.manifest.dir}/data.json`
-                );
-                await this.app.vault.adapter.rename(
-                    `${this.manifest.dir}/temp.json`,
-                    `${this.manifest.dir}/data.json`
-                );
+                await adapter.rename(temp, target);
             } catch (e) {
-                super.saveData(settings);
+                // some platforms refuse to rename over an existing file
+                if (await adapter.exists(target)) {
+                    await adapter.remove(target);
+                }
+                await adapter.rename(temp, target);
             }
-        } else { */
-        super.saveData(settings);
-        /* } */
+        } catch (e) {
+            console.error(
+                "Fantasy Statblocks: atomic save failed, falling back.",
+                e
+            );
+            try {
+                if (await adapter.exists(temp)) await adapter.remove(temp);
+            } catch {}
+            await super.saveData(settings);
+        }
     }
 
     async saveMonster(monster: Monster, save: boolean = true) {
