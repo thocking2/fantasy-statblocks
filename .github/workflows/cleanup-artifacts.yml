@@ -1,0 +1,61 @@
+# Deletes old GitHub Actions artifacts from this repository.
+#
+# The repository's artifact retention setting only applies to artifacts
+# uploaded after it was set; older ones keep the expiry date they were given
+# at upload. This workflow clears those out. Run it by hand from the Actions
+# tab ("Clean up artifacts" -> "Run workflow").
+name: Clean up artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      older_than_days:
+        description: "Delete artifacts created more than this many days ago (0 deletes all)"
+        required: true
+        default: "7"
+      dry_run:
+        description: "Only list what would be deleted"
+        type: boolean
+        default: false
+
+permissions:
+  # Deleting artifacts needs write access to Actions; nothing else is touched.
+  actions: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete old artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OLDER_THAN_DAYS: ${{ inputs.older_than_days }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$OLDER_THAN_DAYS" =~ ^[0-9]+$ ]]; then
+            echo "older_than_days must be a whole number, got '$OLDER_THAN_DAYS'" >&2
+            exit 1
+          fi
+          cutoff=$(( $(date +%s) - OLDER_THAN_DAYS * 86400 ))
+
+          # List first, then delete, so deletions don't shift the pages being read.
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
+            --jq ".artifacts[] | select((.created_at | fromdateiso8601) < $cutoff) | [.id, .name, .created_at, .size_in_bytes] | @tsv" \
+            > old-artifacts.tsv
+
+          count=0
+          bytes=0
+          while IFS=$'\t' read -r id name created size; do
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "would delete $id  $name  ($created, $size bytes)"
+            else
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id"
+              echo "deleted $id  $name  ($created, $size bytes)"
+            fi
+            count=$((count + 1))
+            bytes=$((bytes + size))
+          done < old-artifacts.tsv
+
+          verb=$([ "$DRY_RUN" = "true" ] && echo "Would delete" || echo "Deleted")
+          echo "$verb $count artifact(s), $bytes bytes, older than $OLDER_THAN_DAYS day(s)." | tee -a "$GITHUB_STEP_SUMMARY"
