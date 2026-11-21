@@ -3,7 +3,7 @@
     "name": "Fantasy Statblocks",
     "version": "4.12.11",
     "description": "Create Fantasy Statblocks in Obsidian.md",
-    "minAppVersion": "1.13.0",
+    "minAppVersion": "1.14.4",
     "author": "Jeremy Valentine",
     "authorUrl": "",
     "isDesktopOnly": false
