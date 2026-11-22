@@ -9,10 +9,12 @@ module.exports = {
             "ts-jest",
             {
                 tsconfig: {
-                    baseUrl: ".",
+                    paths: {
+                        "src/*": ["./src/*"],
+                        index: ["./index.ts"]
+                    },
                     module: "commonjs",
                     target: "es2020",
-                    moduleResolution: "node",
                     esModuleInterop: true,
                     experimentalDecorators: true,
                     isolatedModules: true,
