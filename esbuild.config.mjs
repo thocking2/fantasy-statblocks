@@ -80,7 +80,13 @@ const params = {
             compilerOptions: {
                 css: "injected"
             },
-            preprocess: sveltePreprocess(),
+            // svelte-preprocess runs postcss (and its postcss-based
+            // globalStyle step) on <style> blocks whenever postcss happens to
+            // be installed - e.g. hoisted in by Vite/Vitest. No component uses
+            // postcss features or `<style global>`, and LayoutEditor's
+            // {@html `<style>${...}</style>`} template is not valid CSS, so
+            // keep both off explicitly rather than depend on what's installed.
+            preprocess: sveltePreprocess({ postcss: false, globalStyle: false }),
             filterWarnings: (warning) => {
                 return false;
             }

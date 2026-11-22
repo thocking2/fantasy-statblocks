@@ -62,7 +62,7 @@ describe("parseForDice", () => {
     });
 
     it("falls back to the original text when the parser throws", () => {
-        const consoleError = jest
+        const consoleError = vi
             .spyOn(console, "error")
             .mockImplementation(() => {});
         const layout = {
