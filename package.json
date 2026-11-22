@@ -16,7 +16,6 @@
     "author": "Jeremy Valentine",
     "license": "MIT",
     "devDependencies": {
-        "@babel/core": "^7.29.13",
         "@codemirror/commands": "^6.11.1",
         "@codemirror/lang-javascript": "^6.2.5",
         "@codemirror/language": "^6.13.1",
@@ -58,7 +57,7 @@
         "svelte-select": "^6.0.0",
         "title-case": "^4.3.2",
         "tslib": "^2.9.1",
-        "tsup": "^8.5.1",
+        "tsup": "^9.0.0",
         "typescript": "^6.0.3",
         "vitest": "^5.1.1"
     },
